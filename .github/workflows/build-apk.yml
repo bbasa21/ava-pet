@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: pip
+          cache: "false"
 
       - name: Install system dependencies
         shell: bash
@@ -68,37 +68,25 @@ jobs:
           SDK_ROOT="$ANDROID_HOME"
           TOOLS_ROOT="$SDK_ROOT/cmdline-tools"
           TOOLS_DIR="$TOOLS_ROOT/latest"
-
           rm -rf "$SDK_ROOT"
           mkdir -p "$TOOLS_ROOT" "$TOOLS_DIR"
-
-          curl -fL --retry 5 --retry-all-errors \
-            -o /tmp/cmdline-tools.zip \
-            "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
-
+          curl -fL --retry 5 --retry-all-errors -o /tmp/cmdline-tools.zip "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
           rm -rf /tmp/android-cmdline-tools
           mkdir -p /tmp/android-cmdline-tools
           unzip -q /tmp/cmdline-tools.zip -d /tmp/android-cmdline-tools
-
           SDKMANAGER_SRC="$(find /tmp/android-cmdline-tools -type f -name sdkmanager -print -quit)"
           test -n "$SDKMANAGER_SRC"
           SDKMANAGER_BIN_DIR="$(dirname "$SDKMANAGER_SRC")"
           cp -a "$SDKMANAGER_BIN_DIR/.."/. "$TOOLS_DIR/"
-
           chmod +x "$TOOLS_DIR/bin/sdkmanager" "$TOOLS_DIR/bin/avdmanager"
           test -x "$TOOLS_DIR/bin/sdkmanager"
-
-          # Buildozer currently looks for the legacy tools/bin/sdkmanager path.
-          # Keep the modern command-line-tools layout and provide the compatibility path.
           mkdir -p "$SDK_ROOT/tools/bin"
           ln -sfn "$TOOLS_DIR/bin/sdkmanager" "$SDK_ROOT/tools/bin/sdkmanager"
           ln -sfn "$TOOLS_DIR/bin/avdmanager" "$SDK_ROOT/tools/bin/avdmanager"
-
           echo "$TOOLS_DIR/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/tools/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/build-tools/35.0.0" >> "$GITHUB_PATH"
-
           "$TOOLS_DIR/bin/sdkmanager" --version
           "$SDK_ROOT/tools/bin/sdkmanager" --version
 
@@ -108,15 +96,10 @@ jobs:
           set -euxo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-
-          # sdkmanager normally exits successfully after consuming the input,
-          # while `yes` receives SIGPIPE when sdkmanager closes stdin. With
-          # pipefail enabled that SIGPIPE incorrectly makes the step fail.
           set +o pipefail
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses > /tmp/sdk-licenses.log 2>&1
           SDK_LICENSE_STATUS=${PIPESTATUS[1]}
           set -o pipefail
-
           cat /tmp/sdk-licenses.log
           test "$SDK_LICENSE_STATUS" -eq 0
           grep -q "All SDK package licenses accepted" /tmp/sdk-licenses.log
@@ -127,13 +110,11 @@ jobs:
           set -euxo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-30" \
             "build-tools;35.0.0" \
             "ndk;28.2.13676358"
-
           test -x "$ANDROID_HOME/platform-tools/adb"
           test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
           test -d "$ANDROID_HOME/platforms/android-30"
@@ -147,14 +128,12 @@ jobs:
           java -version
           python --version
           buildozer --version
-
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
           test -x "$ANDROID_HOME/tools/bin/sdkmanager"
           "$SDKMANAGER" --version
           "$ANDROID_HOME/tools/bin/sdkmanager" --version
           "$ANDROID_HOME/platform-tools/adb" version
-
           test -f buildozer.spec
           test -f main.py
 
@@ -183,25 +162,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          export HOME=/home/runner
-          export BUILDOZER_HOME=/home/runner/.buildozer
-          export GRADLE_USER_HOME=/home/runner/.gradle
-          export ANDROID_HOME=/home/runner/android-sdk
-          export ANDROID_SDK_ROOT=/home/runner/android-sdk
-          export ANDROID_NDK_HOME=/home/runner/android-sdk/ndk/28.2.13676358
-          export ANDROID_NDK_ROOT=/home/runner/android-sdk/ndk/28.2.13676358
-          export P4A_HOME=/home/runner/.buildozer/android/platform/python-for-android
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0:$PATH"
-
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
-
-          # On a fresh runner there is no p4a checkout yet, so Buildozer must
-          # perform the initial clone. Only clean an existing checkout.
           if [ -d "$P4A_HOME" ]; then
             buildozer android clean || true
           fi
-
           buildozer android debug
 
       - name: Verify generated APK
