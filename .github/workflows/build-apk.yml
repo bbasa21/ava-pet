@@ -76,8 +76,8 @@ jobs:
           elif [ -x /tmp/android-cmdline-tools/bin/sdkmanager ]; then
             cp -a /tmp/android-cmdline-tools/. "$TOOLS_DIR/"
           else
-            echo "ERROR: sdkmanager was not found"
-            find /tmp/android-cmdline-tools -maxdepth 5 -type f -name sdkmanager -print
+            echo "ERROR: sdkmanager was not found after extracting command-line tools"
+            find /tmp/android-cmdline-tools -maxdepth 6 -type f -name sdkmanager -print
             exit 1
           fi
           test -x "$TOOLS_DIR/bin/sdkmanager"
@@ -85,7 +85,6 @@ jobs:
           mkdir -p "$SDK_ROOT/tools/bin"
           ln -sf "$TOOLS_DIR/bin/sdkmanager" "$SDK_ROOT/tools/bin/sdkmanager"
           ln -sf "$TOOLS_DIR/bin/avdmanager" "$SDK_ROOT/tools/bin/avdmanager"
-          test -x "$SDK_ROOT/tools/bin/sdkmanager"
           echo "$TOOLS_DIR/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/tools/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
@@ -94,16 +93,19 @@ jobs:
       - name: Accept Android SDK licenses
         shell: bash
         run: |
-          set -eu
+          set -euxo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-          # sdkmanager can close stdin before `yes` exits. That produces a
-          # harmless Broken pipe from `yes`, so do not let that pipeline fail.
-          set +o pipefail
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses
-          LICENSE_STATUS=${PIPESTATUS[1]}
-          set -o pipefail
-          test "$LICENSE_STATUS" -eq 0
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/tmp/sdk-licenses.log 2>&1 || {
+            status=$?
+            cat /tmp/sdk-licenses.log
+            exit "$status"
+          }
+          grep -q "All SDK package licenses accepted" /tmp/sdk-licenses.log || {
+            cat /tmp/sdk-licenses.log
+            echo "ERROR: Android SDK licenses were not accepted"
+            exit 1
+          }
 
       - name: Install Android SDK and NDK
         shell: bash
@@ -129,7 +131,9 @@ jobs:
           java -version
           python --version
           buildozer --version
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --version
           "$ANDROID_HOME/tools/bin/sdkmanager" --version
           "$ANDROID_HOME/platform-tools/adb" version
           test -f buildozer.spec
@@ -172,7 +176,7 @@ jobs:
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           if [ -d "$P4A_HOME" ]; then
-            buildozer android clean
+            buildozer android clean || true
           else
             echo "Fresh runner: python-for-android is not present yet; skipping clean."
           fi
