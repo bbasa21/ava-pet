@@ -38,7 +38,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
       - name: Install system dependencies
         run: |
@@ -75,18 +74,14 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-
           "$SDKMANAGER" \
             "platform-tools" \
             "platforms;android-30" \
             "build-tools;35.0.0" \
             "ndk;25.1.8937393"
-
           yes | "$SDKMANAGER" --licenses >/dev/null || true
 
       - name: Verify Android toolchain
@@ -97,15 +92,10 @@ jobs:
           python --version
           buildozer --version
           git --version
-
           test -x "$ANDROID_HOME/platform-tools/adb"
           test -d "$ANDROID_HOME/platforms/android-30"
           test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
           test -d "$ANDROID_NDK_HOME"
-
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
-          echo "Build-tools: $ANDROID_HOME/build-tools/35.0.0"
 
       - name: Clean previous Buildozer state
         run: |
@@ -119,7 +109,6 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
           export HOME=/home/runner
           export BUILDOZER_HOME=/home/runner/.buildozer
           export ANDROID_HOME=/home/runner/android-sdk
@@ -128,13 +117,9 @@ jobs:
           export ANDROID_NDK_ROOT=/home/runner/android-sdk/ndk/25.1.8937393
           export P4A_HOME=/home/runner/.buildozer/android/platform/python-for-android
           export GRADLE_USER_HOME=/home/runner/.gradle
-
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
-
-          # Keep Buildozer/p4a on the runner's writable HOME.
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
           buildozer android debug
 
       - name: Verify APK
