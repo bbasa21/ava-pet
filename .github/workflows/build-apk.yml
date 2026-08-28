@@ -40,12 +40,14 @@ jobs:
         with:
           python-version: "3.11"
           check-latest: false
+          cache: pip
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
 
       - name: Install Linux build dependencies
         run: |
@@ -65,9 +67,6 @@ jobs:
           buildozer --version
           cython --version
 
-      # Use a maintained SDK setup action instead of manually downloading
-      # command-line tools and piping license prompts. This removes the two
-      # recurring CI failures: missing sdkmanager/tools/bin and license exit 1.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
@@ -79,6 +78,35 @@ jobs:
             platforms;android-30
             build-tools;35.0.0
             ndk;28.2.13676358
+
+      - name: Normalize Android SDK paths
+        run: |
+          set -euxo pipefail
+
+          # setup-android may install cmdline-tools under a versioned folder
+          # instead of creating cmdline-tools/latest. Locate the real binary
+          # first, then provide both modern and legacy paths for Buildozer/p4a.
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -perm -u+x -print -quit)"
+          test -n "$SDKMANAGER"
+          test -x "$SDKMANAGER"
+
+          CMDLINE_BIN="$(dirname "$SDKMANAGER")"
+          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
+          ln -sfn "$CMDLINE_BIN" "$ANDROID_HOME/cmdline-tools/latest/bin"
+
+          mkdir -p "$ANDROID_HOME/tools/bin"
+          ln -sfn "$SDKMANAGER" "$ANDROID_HOME/tools/bin/sdkmanager"
+          if [ -x "$CMDLINE_BIN/avdmanager" ]; then
+            ln -sfn "$CMDLINE_BIN/avdmanager" "$ANDROID_HOME/tools/bin/avdmanager"
+          fi
+
+          echo "$CMDLINE_BIN" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/tools/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+
+          "$SDKMANAGER" --version
 
       - name: Verify Android toolchain
         run: |
@@ -96,29 +124,18 @@ jobs:
           test -d "$ANDROID_HOME/platforms/android-30"
           test -f "$ANDROID_NDK_HOME/source.properties"
           test -x "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
-
-          # Buildozer/p4a versions still probe the legacy sdkmanager location.
-          # Keep a compatibility symlink so the runner cannot regress here.
-          mkdir -p "$ANDROID_HOME/tools/bin"
-          ln -sfn "$SDKMANAGER" "$ANDROID_HOME/tools/bin/sdkmanager"
-          ln -sfn "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" "$ANDROID_HOME/tools/bin/avdmanager"
-
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/tools/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+          test -x "$ANDROID_HOME/tools/bin/sdkmanager"
 
       - name: Validate project configuration
         run: |
           set -euxo pipefail
           test -f buildozer.spec
           test -f main.py
-          grep -q '^requirements = python3,kivy,pyjnius' buildozer.spec
+          grep -q '^requirements = python3==3.11.5,kivy,pyjnius' buildozer.spec
           grep -q '^android.api = 30' buildozer.spec
-          grep -q '^android.minapi = 24' buildozer.spec
-          grep -q '^android.ndk_api = 24' buildozer.spec
+          grep -q '^android.minapi = 23' buildozer.spec
           grep -q '^android.archs = arm64-v8a' buildozer.spec
-          grep -q '^p4a.commit = 58d2114' buildozer.spec
+          grep -q '^p4a.commit = 957a3e5f8c270f7aa648ba185e5a68c1077a798d' buildozer.spec
 
       - name: Prepare clean writable build directories
         run: |
@@ -136,10 +153,21 @@ jobs:
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
 
-          # log_level=1 prevents Buildozer from adding p4a's enormous --debug
-          # argument. The final failure summary below still preserves useful
-          # diagnostics without flooding the Actions UI with compiler commands.
-          buildozer android debug 2>&1 | tee /tmp/ava-pet-build.log
+          # Keep the complete build log on disk, but only print a compact
+          # progress/error tail to Actions so failures remain readable.
+          set +e
+          buildozer android debug > /tmp/ava-pet-build.log 2>&1
+          STATUS=$?
+          set -e
+
+          echo "===== BUILD PROGRESS ====="
+          tail -n 80 /tmp/ava-pet-build.log || true
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "===== BUILD ERROR SUMMARY ====="
+            grep -E -i 'error:|exception|traceback|failed|failure|exit code|command failed' /tmp/ava-pet-build.log | tail -n 120 || true
+            exit "$STATUS"
+          fi
 
       - name: Verify APK
         if: success()
@@ -150,18 +178,6 @@ jobs:
           ls -lh "$APK"
           file "$APK"
 
-      - name: Build failure summary
-        if: failure()
-        run: |
-          set +e
-          echo "===== AVA PET BUILD FAILURE SUMMARY ====="
-          if [ -f /tmp/ava-pet-build.log ]; then
-            echo "--- Last 160 lines ---"
-            tail -n 160 /tmp/ava-pet-build.log
-            echo "--- Error lines ---"
-            grep -E -i 'error:|exception|traceback|failed|failure|exit code|command failed' /tmp/ava-pet-build.log | tail -n 100 || true
-          fi
-
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
@@ -170,3 +186,12 @@ jobs:
           path: bin/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AVA-PET-build-log
+          path: /tmp/ava-pet-build.log
+          if-no-files-found: ignore
+          retention-days: 7
