@@ -17,7 +17,10 @@ fullscreen = 0
 # Android 11 / API 30 target for the first prototype
 android.api = 30
 android.minapi = 23
-android.ndk_path = /root/.buildozer/android/platform/android-ndk-r25b
+
+# GitHub Actions installs the NDK here.
+android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393
+
 # BLE permissions needed by this first Android-11 target.
 android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION
 
