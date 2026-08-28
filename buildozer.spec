@@ -18,7 +18,8 @@ fullscreen = 0
 android.api = 30
 android.minapi = 23
 
-# GitHub Actions installs the NDK here.
+# GitHub Actions provides these exact SDK/NDK locations.
+android.sdk_path = /home/runner/android-sdk
 android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393
 
 # BLE permissions needed by this first Android-11 target.
