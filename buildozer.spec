@@ -23,10 +23,10 @@ android.api = 30
 android.minapi = 23
 
 # GitHub Actions installs these into the writable runner SDK directory.
-# Keep the paths explicit so Buildozer cannot fall back to /root/.buildozer.
 android.sdk_path = /home/runner/android-sdk
 android.ndk_path = /home/runner/android-sdk/ndk/28.2.13676358
 android.accept_sdk_license = True
+android.skip_update = True
 
 # Single architecture keeps the first debug APK smaller and simpler.
 android.archs = arm64-v8a
@@ -37,6 +37,11 @@ android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION
 # Build settings
 android.release_artifact = apk
 android.debug_artifact = apk
+
+# Use the current python-for-android master because it carries the Android
+# toolchain support expected by the current Buildozer release.
+p4a.fork = kivy
+p4a.branch = master
 
 [buildozer]
 
