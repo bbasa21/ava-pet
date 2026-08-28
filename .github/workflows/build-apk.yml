@@ -8,7 +8,6 @@ on:
 permissions:
   contents: read
 
-# Do not cancel an active build when another commit is pushed.
 concurrency:
   group: ava-pet-apk-${{ github.ref }}
   cancel-in-progress: false
@@ -25,8 +24,8 @@ jobs:
       GRADLE_USER_HOME: /home/runner/.gradle
       ANDROID_HOME: /home/runner/android-sdk
       ANDROID_SDK_ROOT: /home/runner/android-sdk
-      ANDROID_NDK_HOME: /home/runner/android-sdk/ndk/25.1.8937393
-      ANDROID_NDK_ROOT: /home/runner/android-sdk/ndk/25.1.8937393
+      ANDROID_NDK_HOME: /home/runner/android-sdk/ndk/28.2.13676358
+      ANDROID_NDK_ROOT: /home/runner/android-sdk/ndk/28.2.13676358
       P4A_HOME: /home/runner/.buildozer/android/platform/python-for-android
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PYTHONUNBUFFERED: "1"
@@ -39,9 +38,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: |
-            buildozer.spec
 
       - name: Install system dependencies
         shell: bash
@@ -51,9 +47,11 @@ jobs:
           sudo apt-get install -y \
             git zip unzip curl wget ca-certificates \
             openjdk-17-jdk \
-            autoconf automake libtool pkg-config \
+            ant \
+            autoconf automake autopoint libtool pkg-config \
             zlib1g-dev libncurses-dev libffi-dev \
-            libssl-dev libltdl-dev cmake
+            libssl-dev libltdl-dev cmake \
+            build-essential patch ccache
 
       - name: Install Buildozer toolchain
         shell: bash
@@ -61,6 +59,8 @@ jobs:
           set -euxo pipefail
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install "buildozer>=1.5.0" "cython==0.29.37" virtualenv
+          buildozer --version
+          cython --version
 
       - name: Install Android command-line tools
         shell: bash
@@ -86,18 +86,38 @@ jobs:
             cp -a /tmp/android-cmdline-tools/. "$TOOLS_DIR/"
           else
             echo "ERROR: sdkmanager was not found in the downloaded command-line tools"
-            find /tmp/android-cmdline-tools -maxdepth 4 -type f -name sdkmanager -print
+            find /tmp/android-cmdline-tools -maxdepth 5 -type f -name sdkmanager -print
             exit 1
           fi
 
           test -x "$TOOLS_DIR/bin/sdkmanager"
           "$TOOLS_DIR/bin/sdkmanager" --version
 
+          # Buildozer versions used by this project still look for the legacy
+          # SDK layout: $ANDROID_HOME/tools/bin/sdkmanager. Modern command-line
+          # tools install it under cmdline-tools/latest/bin instead. Keep both
+          # paths valid so Buildozer and p4a use the same SDK installation.
+          mkdir -p "$SDK_ROOT/tools/bin"
+          ln -sf "$TOOLS_DIR/bin/sdkmanager" "$SDK_ROOT/tools/bin/sdkmanager"
+          ln -sf "$TOOLS_DIR/bin/avdmanager" "$SDK_ROOT/tools/bin/avdmanager"
+
+          test -x "$SDK_ROOT/tools/bin/sdkmanager"
+          "$SDK_ROOT/tools/bin/sdkmanager" --version
+
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "$TOOLS_DIR/bin" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/tools/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/build-tools/35.0.0" >> "$GITHUB_PATH"
+
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null
 
       - name: Install Android SDK and NDK
         shell: bash
@@ -107,13 +127,11 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
 
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
-
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-30" \
             "build-tools;35.0.0" \
-            "ndk;25.1.8937393"
+            "ndk;28.2.13676358"
 
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
 
@@ -121,6 +139,14 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
           test -d "$ANDROID_HOME/platforms/android-30"
           test -d "$ANDROID_NDK_HOME"
+          test -f "$ANDROID_NDK_HOME/source.properties"
+          test -x "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+
+          # Keep Buildozer's legacy sdkmanager lookup working after all SDK
+          # packages have been installed.
+          mkdir -p "$ANDROID_HOME/tools/bin"
+          ln -sf "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/tools/bin/sdkmanager"
+          test -x "$ANDROID_HOME/tools/bin/sdkmanager"
 
       - name: Verify Android environment
         shell: bash
@@ -130,10 +156,11 @@ jobs:
           python --version
           buildozer --version
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
+          "$ANDROID_HOME/tools/bin/sdkmanager" --version
           "$ANDROID_HOME/build-tools/35.0.0/aidl" --version || true
           "$ANDROID_HOME/platform-tools/adb" version
           test -d "$ANDROID_NDK_HOME"
-          test -x "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+          grep -E "Pkg.Revision|Pkg.Desc" "$ANDROID_NDK_HOME/source.properties" || true
           test -f buildozer.spec
           test -f main.py
 
@@ -155,7 +182,7 @@ jobs:
           grep -q '^android.api = 30' buildozer.spec
           grep -q '^android.minapi = 23' buildozer.spec
           grep -q '^android.sdk_path = /home/runner/android-sdk' buildozer.spec
-          grep -q '^android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393' buildozer.spec
+          grep -q '^android.ndk_path = /home/runner/android-sdk/ndk/28.2.13676358' buildozer.spec
           grep -q '^android.archs = arm64-v8a' buildozer.spec
 
       - name: Build debug APK
@@ -168,14 +195,22 @@ jobs:
           export GRADLE_USER_HOME=/home/runner/.gradle
           export ANDROID_HOME=/home/runner/android-sdk
           export ANDROID_SDK_ROOT=/home/runner/android-sdk
-          export ANDROID_NDK_HOME=/home/runner/android-sdk/ndk/25.1.8937393
-          export ANDROID_NDK_ROOT=/home/runner/android-sdk/ndk/25.1.8937393
+          export ANDROID_NDK_HOME=/home/runner/android-sdk/ndk/28.2.13676358
+          export ANDROID_NDK_ROOT=/home/runner/android-sdk/ndk/28.2.13676358
           export P4A_HOME=/home/runner/.buildozer/android/platform/python-for-android
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0:$PATH"
 
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
 
-          buildozer android clean || true
+          # Buildozer's clean command requires p4a to already exist. On a
+          # fresh GitHub runner it does not, so only clean when it is present.
+          if [ -d "$P4A_HOME" ]; then
+            buildozer android clean
+          else
+            echo "Fresh runner: python-for-android is not present yet; skipping clean."
+          fi
+
           buildozer android debug
 
       - name: Verify generated APK
