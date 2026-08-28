@@ -18,11 +18,14 @@ requirements = python3,kivy,pyjnius
 orientation = portrait
 fullscreen = 0
 
-# Stable Android target for this prototype
+# Android target
 android.api = 30
 android.minapi = 23
-android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393
+
+# GitHub Actions installs these into the writable runner SDK directory.
+# Keep the paths explicit so Buildozer cannot fall back to /root/.buildozer.
 android.sdk_path = /home/runner/android-sdk
+android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393
 android.accept_sdk_license = True
 
 # Single architecture keeps the first debug APK smaller and simpler
