@@ -8,15 +8,17 @@ on:
 permissions:
   contents: read
 
+# Do not cancel an active build when another commit is pushed.
 concurrency:
   group: ava-pet-apk-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     name: Build debug APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
+
     env:
       HOME: /home/runner
       BUILDOZER_HOME: /home/runner/.buildozer
@@ -31,44 +33,94 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: "" 
+          cache: pip
+          cache-dependency-path: |
+            buildozer.spec
 
       - name: Install system dependencies
+        shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y git zip unzip curl wget openjdk-17-jdk \
-            autoconf automake libtool pkg-config zlib1g-dev libncurses-dev \
-            libffi-dev libssl-dev libltdl-dev cmake
+          sudo apt-get install -y \
+            git zip unzip curl wget ca-certificates \
+            openjdk-17-jdk \
+            autoconf automake libtool pkg-config \
+            zlib1g-dev libncurses-dev libffi-dev \
+            libssl-dev libltdl-dev cmake
 
       - name: Install Buildozer toolchain
+        shell: bash
         run: |
           set -euxo pipefail
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install "buildozer>=1.5.0" "cython==0.29.37" virtualenv
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android command-line tools
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          SDK_ROOT="$ANDROID_HOME"
+          TOOLS_ROOT="$SDK_ROOT/cmdline-tools"
+          TOOLS_DIR="$TOOLS_ROOT/latest"
+
+          rm -rf "$SDK_ROOT"
+          mkdir -p "$TOOLS_ROOT" "$TOOLS_DIR"
+
+          curl -fsSL \
+            -o /tmp/cmdline-tools.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
+
+          unzip -q /tmp/cmdline-tools.zip -d /tmp/android-cmdline-tools
+
+          if [ -x /tmp/android-cmdline-tools/cmdline-tools/bin/sdkmanager ]; then
+            cp -a /tmp/android-cmdline-tools/cmdline-tools/. "$TOOLS_DIR/"
+          elif [ -x /tmp/android-cmdline-tools/bin/sdkmanager ]; then
+            cp -a /tmp/android-cmdline-tools/. "$TOOLS_DIR/"
+          else
+            echo "ERROR: sdkmanager was not found in the downloaded command-line tools"
+            find /tmp/android-cmdline-tools -maxdepth 4 -type f -name sdkmanager -print
+            exit 1
+          fi
+
+          test -x "$TOOLS_DIR/bin/sdkmanager"
+          "$TOOLS_DIR/bin/sdkmanager" --version
+
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$TOOLS_DIR/bin" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/build-tools/35.0.0" >> "$GITHUB_PATH"
 
       - name: Install Android SDK and NDK
         shell: bash
         run: |
           set -euxo pipefail
+
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
+
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
+
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-30" \
             "build-tools;35.0.0" \
             "ndk;25.1.8937393"
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
+
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
+
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
+          test -d "$ANDROID_HOME/platforms/android-30"
+          test -d "$ANDROID_NDK_HOME"
 
       - name: Verify Android environment
         shell: bash
@@ -77,12 +129,16 @@ jobs:
           java -version
           python --version
           buildozer --version
-          test -x "$ANDROID_HOME/platform-tools/adb"
-          test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
-          test -d "$ANDROID_HOME/platforms/android-30"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
+          "$ANDROID_HOME/build-tools/35.0.0/aidl" --version || true
+          "$ANDROID_HOME/platform-tools/adb" version
           test -d "$ANDROID_NDK_HOME"
+          test -x "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+          test -f buildozer.spec
+          test -f main.py
 
-      - name: Prepare writable Buildozer directories
+      - name: Prepare clean writable build directories
+        shell: bash
         run: |
           set -euxo pipefail
           sudo rm -rf /root/.buildozer /root/.gradle
@@ -91,20 +147,22 @@ jobs:
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Validate project files
+      - name: Validate project configuration
         shell: bash
         run: |
           set -euxo pipefail
-          test -f main.py
-          test -f buildozer.spec
           grep -q '^requirements = python3,kivy,pyjnius' buildozer.spec
           grep -q '^android.api = 30' buildozer.spec
+          grep -q '^android.minapi = 23' buildozer.spec
+          grep -q '^android.sdk_path = /home/runner/android-sdk' buildozer.spec
           grep -q '^android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393' buildozer.spec
+          grep -q '^android.archs = arm64-v8a' buildozer.spec
 
       - name: Build debug APK
         shell: bash
         run: |
           set -euxo pipefail
+
           export HOME=/home/runner
           export BUILDOZER_HOME=/home/runner/.buildozer
           export GRADLE_USER_HOME=/home/runner/.gradle
@@ -113,8 +171,10 @@ jobs:
           export ANDROID_NDK_HOME=/home/runner/android-sdk/ndk/25.1.8937393
           export ANDROID_NDK_ROOT=/home/runner/android-sdk/ndk/25.1.8937393
           export P4A_HOME=/home/runner/.buildozer/android/platform/python-for-android
+
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
+
           buildozer android clean || true
           buildozer android debug
 
