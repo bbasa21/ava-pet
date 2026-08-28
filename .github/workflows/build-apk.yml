@@ -46,12 +46,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             git zip unzip curl wget ca-certificates \
-            openjdk-17-jdk \
-            ant \
+            openjdk-17-jdk ant \
             autoconf automake autopoint libtool pkg-config \
-            zlib1g-dev libncurses-dev libffi-dev \
-            libssl-dev libltdl-dev cmake \
-            build-essential patch ccache
+            zlib1g-dev libncurses-dev libffi-dev libssl-dev libltdl-dev \
+            cmake build-essential patch ccache
 
       - name: Install Buildozer toolchain
         shell: bash
@@ -66,44 +64,28 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
           SDK_ROOT="$ANDROID_HOME"
           TOOLS_ROOT="$SDK_ROOT/cmdline-tools"
           TOOLS_DIR="$TOOLS_ROOT/latest"
-
           rm -rf "$SDK_ROOT"
           mkdir -p "$TOOLS_ROOT" "$TOOLS_DIR"
-
-          curl -fsSL \
-            -o /tmp/cmdline-tools.zip \
-            "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
-
+          curl -fsSL -o /tmp/cmdline-tools.zip "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
           unzip -q /tmp/cmdline-tools.zip -d /tmp/android-cmdline-tools
-
           if [ -x /tmp/android-cmdline-tools/cmdline-tools/bin/sdkmanager ]; then
             cp -a /tmp/android-cmdline-tools/cmdline-tools/. "$TOOLS_DIR/"
           elif [ -x /tmp/android-cmdline-tools/bin/sdkmanager ]; then
             cp -a /tmp/android-cmdline-tools/. "$TOOLS_DIR/"
           else
-            echo "ERROR: sdkmanager was not found in the downloaded command-line tools"
+            echo "ERROR: sdkmanager was not found"
             find /tmp/android-cmdline-tools -maxdepth 5 -type f -name sdkmanager -print
             exit 1
           fi
-
           test -x "$TOOLS_DIR/bin/sdkmanager"
           "$TOOLS_DIR/bin/sdkmanager" --version
-
-          # Buildozer still probes the legacy SDK path on some releases.
-          # Modern command-line tools use cmdline-tools/latest/bin instead.
           mkdir -p "$SDK_ROOT/tools/bin"
           ln -sf "$TOOLS_DIR/bin/sdkmanager" "$SDK_ROOT/tools/bin/sdkmanager"
           ln -sf "$TOOLS_DIR/bin/avdmanager" "$SDK_ROOT/tools/bin/avdmanager"
-
           test -x "$SDK_ROOT/tools/bin/sdkmanager"
-          "$SDK_ROOT/tools/bin/sdkmanager" --version
-
-          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "$TOOLS_DIR/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/tools/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
@@ -112,37 +94,33 @@ jobs:
       - name: Accept Android SDK licenses
         shell: bash
         run: |
-          set -euxo pipefail
+          set -eu
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null
+          # sdkmanager can close stdin before `yes` exits. That produces a
+          # harmless Broken pipe from `yes`, so do not let that pipeline fail.
+          set +o pipefail
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses
+          LICENSE_STATUS=${PIPESTATUS[1]}
+          set -o pipefail
+          test "$LICENSE_STATUS" -eq 0
 
       - name: Install Android SDK and NDK
         shell: bash
         run: |
           set -euxo pipefail
-
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-30" \
             "build-tools;35.0.0" \
             "ndk;28.2.13676358"
-
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
-
           test -x "$ANDROID_HOME/platform-tools/adb"
           test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
           test -d "$ANDROID_HOME/platforms/android-30"
-          test -d "$ANDROID_NDK_HOME"
           test -f "$ANDROID_NDK_HOME/source.properties"
           test -x "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
-
-          mkdir -p "$ANDROID_HOME/tools/bin"
-          ln -sf "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/tools/bin/sdkmanager"
-          test -x "$ANDROID_HOME/tools/bin/sdkmanager"
 
       - name: Verify Android environment
         shell: bash
@@ -153,10 +131,7 @@ jobs:
           buildozer --version
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
           "$ANDROID_HOME/tools/bin/sdkmanager" --version
-          "$ANDROID_HOME/build-tools/35.0.0/aidl" --version || true
           "$ANDROID_HOME/platform-tools/adb" version
-          test -d "$ANDROID_NDK_HOME"
-          grep -E "Pkg.Revision|Pkg.Desc" "$ANDROID_NDK_HOME/source.properties" || true
           test -f buildozer.spec
           test -f main.py
 
@@ -185,7 +160,6 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
           export HOME=/home/runner
           export BUILDOZER_HOME=/home/runner/.buildozer
           export GRADLE_USER_HOME=/home/runner/.gradle
@@ -195,18 +169,13 @@ jobs:
           export ANDROID_NDK_ROOT=/home/runner/android-sdk/ndk/28.2.13676358
           export P4A_HOME=/home/runner/.buildozer/android/platform/python-for-android
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0:$PATH"
-
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
-
-          # A fresh runner has no p4a checkout yet, so do not run Buildozer's
-          # clean command until that directory actually exists.
           if [ -d "$P4A_HOME" ]; then
             buildozer android clean
           else
             echo "Fresh runner: python-for-android is not present yet; skipping clean."
           fi
-
           buildozer android debug
 
       - name: Verify generated APK
