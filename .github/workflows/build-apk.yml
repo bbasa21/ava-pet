@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: ava-pet-apk-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -93,10 +93,8 @@ jobs:
           test -x "$TOOLS_DIR/bin/sdkmanager"
           "$TOOLS_DIR/bin/sdkmanager" --version
 
-          # Buildozer versions used by this project still look for the legacy
-          # SDK layout: $ANDROID_HOME/tools/bin/sdkmanager. Modern command-line
-          # tools install it under cmdline-tools/latest/bin instead. Keep both
-          # paths valid so Buildozer and p4a use the same SDK installation.
+          # Buildozer still probes the legacy SDK path on some releases.
+          # Modern command-line tools use cmdline-tools/latest/bin instead.
           mkdir -p "$SDK_ROOT/tools/bin"
           ln -sf "$TOOLS_DIR/bin/sdkmanager" "$SDK_ROOT/tools/bin/sdkmanager"
           ln -sf "$TOOLS_DIR/bin/avdmanager" "$SDK_ROOT/tools/bin/avdmanager"
@@ -142,8 +140,6 @@ jobs:
           test -f "$ANDROID_NDK_HOME/source.properties"
           test -x "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
 
-          # Keep Buildozer's legacy sdkmanager lookup working after all SDK
-          # packages have been installed.
           mkdir -p "$ANDROID_HOME/tools/bin"
           ln -sf "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/tools/bin/sdkmanager"
           test -x "$ANDROID_HOME/tools/bin/sdkmanager"
@@ -203,8 +199,8 @@ jobs:
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
 
-          # Buildozer's clean command requires p4a to already exist. On a
-          # fresh GitHub runner it does not, so only clean when it is present.
+          # A fresh runner has no p4a checkout yet, so do not run Buildozer's
+          # clean command until that directory actually exists.
           if [ -d "$P4A_HOME" ]; then
             buildozer android clean
           else
