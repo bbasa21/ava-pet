@@ -16,17 +16,16 @@ jobs:
   build:
     name: Build debug APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-
+    timeout-minutes: 60
     env:
       HOME: /home/runner
       BUILDOZER_HOME: /home/runner/.buildozer
+      GRADLE_USER_HOME: /home/runner/.gradle
       ANDROID_HOME: /home/runner/android-sdk
       ANDROID_SDK_ROOT: /home/runner/android-sdk
       ANDROID_NDK_HOME: /home/runner/android-sdk/ndk/25.1.8937393
       ANDROID_NDK_ROOT: /home/runner/android-sdk/ndk/25.1.8937393
       P4A_HOME: /home/runner/.buildozer/android/platform/python-for-android
-      GRADLE_USER_HOME: /home/runner/.gradle
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PYTHONUNBUFFERED: "1"
 
@@ -38,101 +37,97 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "" 
 
       - name: Install system dependencies
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y \
-            git zip unzip curl wget \
-            openjdk-17-jdk \
-            autoconf automake libtool pkg-config \
-            zlib1g-dev libncurses-dev libffi-dev libssl-dev \
-            libltdl-dev cmake
+          sudo apt-get install -y git zip unzip curl wget openjdk-17-jdk \
+            autoconf automake libtool pkg-config zlib1g-dev libncurses-dev \
+            libffi-dev libssl-dev libltdl-dev cmake
 
-      - name: Install Python build tools
+      - name: Install Buildozer toolchain
         run: |
           set -euxo pipefail
-          python -m pip install --upgrade pip
-          python -m pip install \
-            "buildozer>=1.5.0" \
-            "cython==0.29.37" \
-            virtualenv
-
-      - name: Prepare clean writable build environment
-        run: |
-          set -euxo pipefail
-          sudo rm -rf /root/.buildozer /root/.gradle
-          rm -rf "$BUILDOZER_HOME" "$GRADLE_USER_HOME" "$ANDROID_HOME"
-          mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME" "$ANDROID_HOME"
-          chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME" "$ANDROID_HOME"
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install "buildozer>=1.5.0" "cython==0.29.37" virtualenv
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install exact Android SDK packages and accept licenses
+      - name: Install Android SDK and NDK
         shell: bash
         run: |
           set -euxo pipefail
-          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" \
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-30" \
             "build-tools;35.0.0" \
             "ndk;25.1.8937393"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
 
-      - name: Verify Android toolchain
+      - name: Verify Android environment
         shell: bash
         run: |
           set -euxo pipefail
           java -version
           python --version
           buildozer --version
-          git --version
           test -x "$ANDROID_HOME/platform-tools/adb"
-          test -d "$ANDROID_HOME/platforms/android-30"
           test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
+          test -d "$ANDROID_HOME/platforms/android-30"
           test -d "$ANDROID_NDK_HOME"
 
-      - name: Clean previous Buildozer state
+      - name: Prepare writable Buildozer directories
         run: |
           set -euxo pipefail
-          rm -rf .buildozer bin
-          rm -rf "$P4A_HOME"
+          sudo rm -rf /root/.buildozer /root/.gradle
+          rm -rf "$BUILDOZER_HOME" "$GRADLE_USER_HOME" .buildozer bin
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Build APK
+      - name: Validate project files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -f main.py
+          test -f buildozer.spec
+          grep -q '^requirements = python3,kivy,pyjnius' buildozer.spec
+          grep -q '^android.api = 30' buildozer.spec
+          grep -q '^android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393' buildozer.spec
+
+      - name: Build debug APK
         shell: bash
         run: |
           set -euxo pipefail
           export HOME=/home/runner
           export BUILDOZER_HOME=/home/runner/.buildozer
+          export GRADLE_USER_HOME=/home/runner/.gradle
           export ANDROID_HOME=/home/runner/android-sdk
           export ANDROID_SDK_ROOT=/home/runner/android-sdk
           export ANDROID_NDK_HOME=/home/runner/android-sdk/ndk/25.1.8937393
           export ANDROID_NDK_ROOT=/home/runner/android-sdk/ndk/25.1.8937393
           export P4A_HOME=/home/runner/.buildozer/android/platform/python-for-android
-          export GRADLE_USER_HOME=/home/runner/.gradle
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          buildozer android clean || true
           buildozer android debug
 
-      - name: Verify APK
+      - name: Verify generated APK
         shell: bash
         run: |
           set -euxo pipefail
-          echo "APK files:"
-          find bin -maxdepth 1 -type f -name "*.apk" -print
-          APK="$(find bin -maxdepth 1 -type f -name "*.apk" -print -quit)"
+          APK="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$APK"
+          echo "Generated APK: $APK"
           ls -lh "$APK"
 
-      - name: Upload APK artifact
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: AVA-PET-debug-APK
