@@ -25,13 +25,13 @@ android.minapi = 23
 # GitHub Actions installs these into the writable runner SDK directory.
 # Keep the paths explicit so Buildozer cannot fall back to /root/.buildozer.
 android.sdk_path = /home/runner/android-sdk
-android.ndk_path = /home/runner/android-sdk/ndk/25.1.8937393
+android.ndk_path = /home/runner/android-sdk/ndk/28.2.13676358
 android.accept_sdk_license = True
 
-# Single architecture keeps the first debug APK smaller and simpler
+# Single architecture keeps the first debug APK smaller and simpler.
 android.archs = arm64-v8a
 
-# Bluetooth permissions for Android 11 target
+# Bluetooth permissions for the Android 11 target.
 android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION
 
 # Build settings
