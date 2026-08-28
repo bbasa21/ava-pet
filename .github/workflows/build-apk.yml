@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Only one build for main at a time. A newer push replaces an older queued build.
 concurrency:
   group: ava-pet-apk-${{ github.ref }}
   cancel-in-progress: true
@@ -24,8 +25,8 @@ jobs:
       GRADLE_USER_HOME: /home/runner/.gradle
       ANDROID_HOME: /home/runner/android-sdk
       ANDROID_SDK_ROOT: /home/runner/android-sdk
-      ANDROID_NDK_HOME: /home/runner/android-sdk/ndk/28.2.13676358
-      ANDROID_NDK_ROOT: /home/runner/android-sdk/ndk/28.2.13676358
+      ANDROID_NDK_HOME: /home/runner/android-sdk/ndk/25.1.8937393
+      ANDROID_NDK_ROOT: /home/runner/android-sdk/ndk/25.1.8937393
       P4A_HOME: /home/runner/.buildozer/android/platform/python-for-android
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PYTHONUNBUFFERED: "1"
@@ -40,7 +41,8 @@ jobs:
         with:
           python-version: "3.11"
           check-latest: false
-          cache: pip
+          # Do not enable setup-python dependency caching here: this project
+          # intentionally has no requirements.txt/pyproject.toml.
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -59,85 +61,132 @@ jobs:
             zlib1g-dev libncurses-dev libffi-dev libssl-dev libltdl-dev \
             cmake build-essential patch ccache
 
-      - name: Install Buildozer
+      - name: Install Buildozer and pin Python build tools
         run: |
           set -euxo pipefail
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install "buildozer==1.6.0" "cython==0.29.37" virtualenv
+          python -m pip install \
+            "buildozer==1.6.0" \
+            "cython==0.29.37" \
+            virtualenv
           buildozer --version
           cython --version
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          cmdline-tools-version: "14742923"
-          accept-android-sdk-licenses: true
-          log-accepted-android-sdk-licenses: false
-          packages: >-
-            platform-tools
-            platforms;android-30
-            build-tools;35.0.0
-            ndk;28.2.13676358
-
-      - name: Normalize Android SDK paths
+      - name: Install Android command line tools
         run: |
           set -euxo pipefail
 
-          # setup-android may install cmdline-tools under a versioned folder
-          # instead of creating cmdline-tools/latest. Locate the real binary
-          # first, then provide both modern and legacy paths for Buildozer/p4a.
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -perm -u+x -print -quit)"
-          test -n "$SDKMANAGER"
-          test -x "$SDKMANAGER"
-
-          CMDLINE_BIN="$(dirname "$SDKMANAGER")"
+          rm -rf "$ANDROID_HOME"
           mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
-          ln -sfn "$CMDLINE_BIN" "$ANDROID_HOME/cmdline-tools/latest/bin"
+
+          # Known-good Google command-line-tools package. Installing it
+          # ourselves avoids setup-android moving sdkmanager between paths.
+          curl -fL --retry 5 --retry-all-errors \
+            -o /tmp/cmdline-tools.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
+
+          rm -rf /tmp/android-cmdline-tools
+          mkdir -p /tmp/android-cmdline-tools
+          unzip -q /tmp/cmdline-tools.zip -d /tmp/android-cmdline-tools
+
+          test -x /tmp/android-cmdline-tools/cmdline-tools/bin/sdkmanager
+          cp -a /tmp/android-cmdline-tools/cmdline-tools/. \
+            "$ANDROID_HOME/cmdline-tools/latest/"
+
+          chmod +x \
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
 
           mkdir -p "$ANDROID_HOME/tools/bin"
-          ln -sfn "$SDKMANAGER" "$ANDROID_HOME/tools/bin/sdkmanager"
-          if [ -x "$CMDLINE_BIN/avdmanager" ]; then
-            ln -sfn "$CMDLINE_BIN/avdmanager" "$ANDROID_HOME/tools/bin/avdmanager"
-          fi
+          ln -sfn \
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "$ANDROID_HOME/tools/bin/sdkmanager"
+          ln -sfn \
+            "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" \
+            "$ANDROID_HOME/tools/bin/avdmanager"
 
-          echo "$CMDLINE_BIN" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/tools/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
 
-          "$SDKMANAGER" --version
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
 
-      - name: Verify Android toolchain
+      - name: Accept Android SDK licenses
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+
+          # sdkmanager can terminate after the last license is accepted,
+          # causing `yes` to receive SIGPIPE. Ignore only that expected case.
+          set +e
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses \
+            > /tmp/sdk-licenses.log 2>&1
+          SDK_STATUS=${PIPESTATUS[1]}
+          set -e
+
+          cat /tmp/sdk-licenses.log
+          if [ "$SDK_STATUS" -ne 0 ]; then
+            exit "$SDK_STATUS"
+          fi
+
+      - name: Install Android SDK and NDK
         run: |
           set -euxo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
 
-          test -x "$SDKMANAGER"
-          "$SDKMANAGER" --version
-          java -version
-          python --version
-          buildozer --version
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
+            "platform-tools" \
+            "platforms;android-30" \
+            "build-tools;35.0.0" \
+            "ndk;25.1.8937393"
 
           test -x "$ANDROID_HOME/platform-tools/adb"
           test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
           test -d "$ANDROID_HOME/platforms/android-30"
           test -f "$ANDROID_NDK_HOME/source.properties"
           test -x "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+
+      - name: Verify complete Android toolchain
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+          "$SDKMANAGER" --version
+          java -version
+          python --version
+          buildozer --version
+          "$ANDROID_HOME/platform-tools/adb" version
+          "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version
+
+          test -x "$SDKMANAGER"
           test -x "$ANDROID_HOME/tools/bin/sdkmanager"
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
+          test -d "$ANDROID_HOME/platforms/android-30"
+          test -f "$ANDROID_NDK_HOME/source.properties"
+
+          echo "===== ANDROID TOOLCHAIN ====="
+          cat "$ANDROID_NDK_HOME/source.properties"
+          echo "===== SDK PACKAGES ====="
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --list_installed \
+            | grep -E 'platform-tools|platforms;android-30|build-tools;35.0.0|ndk;25.1.8937393' || true
 
       - name: Validate project configuration
         run: |
           set -euxo pipefail
           test -f buildozer.spec
           test -f main.py
-          grep -q '^requirements = python3==3.11.5,kivy,pyjnius' buildozer.spec
+
+          grep -q '^requirements = python3==3.11.5,kivy==2.3.1,pyjnius==1.6.1' buildozer.spec
           grep -q '^android.api = 30' buildozer.spec
           grep -q '^android.minapi = 23' buildozer.spec
+          grep -q '^android.ndk_api = 23' buildozer.spec
           grep -q '^android.archs = arm64-v8a' buildozer.spec
           grep -q '^p4a.commit = 957a3e5f8c270f7aa648ba185e5a68c1077a798d' buildozer.spec
 
-      - name: Prepare clean writable build directories
+      - name: Prepare clean writable Buildozer environment
         run: |
           set -euxo pipefail
           sudo rm -rf /root/.buildozer /root/.gradle
@@ -150,26 +199,31 @@ jobs:
         run: |
           set -euxo pipefail
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0:$PATH"
+
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           chmod -R u+rwX "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
 
-          # Keep the complete build log on disk, but only print a compact
-          # progress/error tail to Actions so failures remain readable.
+          # Capture the huge compiler output to a file instead of flooding
+          # the Actions UI. On failure, print the useful error section only.
           set +e
           buildozer android debug > /tmp/ava-pet-build.log 2>&1
           STATUS=$?
           set -e
 
-          echo "===== BUILD PROGRESS ====="
-          tail -n 80 /tmp/ava-pet-build.log || true
-
-          if [ "$STATUS" -ne 0 ]; then
-            echo "===== BUILD ERROR SUMMARY ====="
-            grep -E -i 'error:|exception|traceback|failed|failure|exit code|command failed' /tmp/ava-pet-build.log | tail -n 120 || true
+          if [ "$STATUS" -eq 0 ]; then
+            echo "===== BUILD FINISHED ====="
+            tail -n 100 /tmp/ava-pet-build.log || true
+          else
+            echo "===== BUILD FAILED: LAST 120 LINES ====="
+            tail -n 120 /tmp/ava-pet-build.log || true
+            echo "===== BUILD FAILED: ERROR SUMMARY ====="
+            grep -E -i \
+              'error:|fatal:|exception|traceback|failed|failure|exit code|command failed|stderr:' \
+              /tmp/ava-pet-build.log | tail -n 160 || true
             exit "$STATUS"
           fi
 
-      - name: Verify APK
+      - name: Verify generated APK
         if: success()
         run: |
           set -euxo pipefail
@@ -178,7 +232,7 @@ jobs:
           ls -lh "$APK"
           file "$APK"
 
-      - name: Upload APK
+      - name: Upload debug APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -187,7 +241,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload build log on failure
+      - name: Upload full build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
