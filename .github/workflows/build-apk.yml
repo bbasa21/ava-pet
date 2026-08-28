@@ -1,3 +1,4 @@
+
 name: Build AVA PET APK
 
 on:
@@ -31,8 +32,7 @@ jobs:
             libtool \
             pkg-config \
             zlib1g-dev \
-            libncurses5 \
-            libncurses5-dev \
+            libncurses-dev \
             libffi-dev \
             libssl-dev
 
