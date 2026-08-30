@@ -13,7 +13,7 @@ source.exclude_dirs = .git,.github,.buildozer,.kivy,bin,__pycache__
 
 # Keep the Python runtime compatible with the pinned python-for-android
 # release below.
-requirements = python3==3.11.5,kivy==2.3.1,pyjnius==1.6.1
+requirements = python3==3.11.5,kivy==2.3.1,pyjnius==1.6.1,filetype==1.2.0
 
 orientation = portrait
 fullscreen = 0
