@@ -4,6 +4,7 @@
 title = AVA PET
 package.name = avapet
 package.domain = org.ava
+version = 0.1
 
 # Project source
 source.dir = .
