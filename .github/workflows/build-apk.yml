@@ -68,7 +68,7 @@ jobs:
         run: |
           set -euxo pipefail
           rm -rf "$ANDROID_HOME"
-          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
           curl -fL --retry 5 --retry-all-errors \
             -o /tmp/cmdline-tools.zip \
             "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
@@ -76,21 +76,33 @@ jobs:
           mkdir -p /tmp/android-cmdline-tools
           unzip -q /tmp/cmdline-tools.zip -d /tmp/android-cmdline-tools
           test -x /tmp/android-cmdline-tools/cmdline-tools/bin/sdkmanager
-          cp -a /tmp/android-cmdline-tools/cmdline-tools/. \
-            "$ANDROID_HOME/cmdline-tools/latest/"
+          mv /tmp/android-cmdline-tools/cmdline-tools \
+            "$ANDROID_HOME/cmdline-tools/latest"
+
           chmod +x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           chmod +x "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
 
-          # Buildozer 1.6.0 still probes the legacy SDK layout:
+          # Buildozer 1.6.0 may probe the legacy SDK path:
           #   $ANDROID_HOME/tools/bin/sdkmanager
-          # Modern Android command-line tools install it under:
-          #   $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
-          # Expose the modern binary at the legacy path instead of patching
-          # Buildozer or relying on an obsolete Android tools package.
+          # Do NOT symlink tools/bin directly to cmdline-tools/latest/bin.
+          # sdkmanager resolves its own ../lib path relative to its script,
+          # so a symlink makes it look for the libraries under tools/lib.
+          # Use tiny wrapper scripts that jump to the real modern binaries.
           rm -rf "$ANDROID_HOME/tools"
-          mkdir -p "$ANDROID_HOME/tools"
-          ln -s "$ANDROID_HOME/cmdline-tools/latest/bin" \
-            "$ANDROID_HOME/tools/bin"
+          mkdir -p "$ANDROID_HOME/tools/bin"
+
+          cat > "$ANDROID_HOME/tools/bin/sdkmanager" <<'EOF'
+#!/usr/bin/env bash
+exec /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager "$@"
+EOF
+
+          cat > "$ANDROID_HOME/tools/bin/avdmanager" <<'EOF'
+#!/usr/bin/env bash
+exec /home/runner/android-sdk/cmdline-tools/latest/bin/avdmanager "$@"
+EOF
+
+          chmod +x "$ANDROID_HOME/tools/bin/sdkmanager"
+          chmod +x "$ANDROID_HOME/tools/bin/avdmanager"
 
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/tools/bin" >> "$GITHUB_PATH"
@@ -98,6 +110,8 @@ jobs:
           echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
 
           test -x "$ANDROID_HOME/tools/bin/sdkmanager"
+          test -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -d "$ANDROID_HOME/cmdline-tools/latest/lib"
           "$ANDROID_HOME/tools/bin/sdkmanager" --version
 
       - name: Accept Android SDK licenses
