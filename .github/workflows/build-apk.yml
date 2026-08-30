@@ -37,8 +37,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Do NOT use setup-java's Gradle cache here. This repository is a
-      # Buildozer project and has no Gradle files before p4a generates them.
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
@@ -82,23 +80,36 @@ jobs:
             "$ANDROID_HOME/cmdline-tools/latest/"
           chmod +x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           chmod +x "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+
+          # Buildozer 1.6.0 still probes the legacy SDK layout:
+          #   $ANDROID_HOME/tools/bin/sdkmanager
+          # Modern Android command-line tools install it under:
+          #   $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
+          # Expose the modern binary at the legacy path instead of patching
+          # Buildozer or relying on an obsolete Android tools package.
+          rm -rf "$ANDROID_HOME/tools"
+          mkdir -p "$ANDROID_HOME/tools"
+          ln -s "$ANDROID_HOME/cmdline-tools/latest/bin" \
+            "$ANDROID_HOME/tools/bin"
+
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/tools/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
+
+          test -x "$ANDROID_HOME/tools/bin/sdkmanager"
+          "$ANDROID_HOME/tools/bin/sdkmanager" --version
 
       - name: Accept Android SDK licenses
         run: |
           set -euxo pipefail
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          SDKMANAGER="$ANDROID_HOME/tools/bin/sdkmanager"
           set +e
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses \
             > /tmp/sdk-licenses.log 2>&1
           SDK_STATUS=${PIPESTATUS[1]}
           set -e
           cat /tmp/sdk-licenses.log
-          # sdkmanager may exit non-zero after yes receives SIGPIPE; only fail
-          # if sdkmanager itself did not finish successfully.
           if [ "$SDK_STATUS" -ne 0 ]; then
             exit "$SDK_STATUS"
           fi
@@ -106,7 +117,7 @@ jobs:
       - name: Install Android SDK and NDK
         run: |
           set -euxo pipefail
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          SDKMANAGER="$ANDROID_HOME/tools/bin/sdkmanager"
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-30" \
@@ -140,7 +151,7 @@ jobs:
       - name: Build debug APK
         run: |
           set -euxo pipefail
-          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0:$PATH"
+          export PATH="$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0:$PATH"
           mkdir -p "$BUILDOZER_HOME" "$GRADLE_USER_HOME"
           set +e
           buildozer android debug > /tmp/ava-pet-build.log 2>&1
