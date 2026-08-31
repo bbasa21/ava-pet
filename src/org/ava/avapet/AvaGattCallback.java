@@ -14,9 +14,7 @@ public final class AvaGattCallback extends BluetoothGattCallback {
     private final List<String> events = new ArrayList<>();
     private BluetoothGatt currentGatt;
 
-    private synchronized void push(String event) {
-        events.add(event);
-    }
+    private synchronized void push(String event) { events.add(event); }
 
     public synchronized String[] drainEvents() {
         String[] result = events.toArray(new String[0]);
@@ -24,9 +22,7 @@ public final class AvaGattCallback extends BluetoothGattCallback {
         return result;
     }
 
-    public synchronized BluetoothGatt getGatt() {
-        return currentGatt;
-    }
+    public synchronized BluetoothGatt getGatt() { return currentGatt; }
 
     @Override
     public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
@@ -43,10 +39,7 @@ public final class AvaGattCallback extends BluetoothGattCallback {
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         currentGatt = gatt;
-        if (characteristic == null) {
-            push("CHANGED||");
-            return;
-        }
+        if (characteristic == null) { push("CHANGED||"); return; }
         String uuid = String.valueOf(characteristic.getUuid());
         byte[] value = characteristic.getValue();
         String encoded = value == null ? "" : Base64.encodeToString(value, Base64.NO_WRAP);
