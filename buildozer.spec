@@ -4,7 +4,7 @@
 title = AVA PET
 package.name = avapet
 package.domain = org.ava
-version = 0.2
+version = 0.3
 
 # Project source
 source.dir = .
@@ -18,11 +18,14 @@ android.add_src = src
 # Python runtime
 requirements = python3==3.11.5,kivy==2.3.1,pyjnius==1.6.1,filetype==1.2.0
 
-orientation = portrait
+# AVA PET is a landscape application.
+orientation = landscape
 fullscreen = 0
 
 # Android 10+ = API 29+
-android.api = 30
+# Target API 31 so Android 12+ Nearby Devices permissions are handled
+# using BLUETOOTH_SCAN / BLUETOOTH_CONNECT.
+android.api = 31
 android.minapi = 29
 android.ndk_api = 29
 
@@ -31,9 +34,9 @@ android.accept_sdk_license = True
 # Current Android phone architecture
 android.archs = arm64-v8a
 
-# Android 10/11 permissions. The Python code requests the newer
-# Bluetooth permissions on Android 12+ when the platform exposes them.
-android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
+# BLE + location permissions.
+# Runtime permission handling is performed by main.py.
+android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
 
 android.release_artifact = apk
 android.debug_artifact = apk
