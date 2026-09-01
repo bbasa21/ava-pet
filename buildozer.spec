@@ -8,7 +8,7 @@ version = 0.2
 
 # Project source
 source.dir = .
-source.include_exts = py,png,jpg,jpeg,kv,atlas,json,txt
+source.include_exts = py,png,jpg,jpeg,kv,atlas,json,txt,ttf
 source.exclude_dirs = .git,.github,.buildozer,.kivy,bin,__pycache__
 
 # Java BLE bridge. Buildozer passes this directory to
