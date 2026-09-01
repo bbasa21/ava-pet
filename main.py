@@ -24,6 +24,8 @@ AVA_NAME = "AVA"
 SERVICE_UUID = "7b7a0001-6a76-4156-9a76-415641000001"
 COMMAND_UUID = "7b7a0002-6a76-4156-9a76-415641000001"
 EVENT_UUID = "7b7a0003-6a76-4156-9a76-415641000001"
+STATE_UUID = "7b7a0004-6a76-4156-9a76-415641000001"
+DATA_UUID = "7b7a0005-6a76-4156-9a76-415641000001"
 
 CCCD_UUID = "00002902-0000-1000-8000-00805f9b34fb"
 
@@ -42,7 +44,7 @@ WRITE_TYPE_DEFAULT = 2
 
 
 # ============================================================
-# CLOCK COMMANDS
+# CLOCK PROTOCOL
 # ============================================================
 
 TIME_REQUEST = "TIME_REQUEST"
@@ -126,6 +128,9 @@ class AndroidBLE:
 
         self.command_characteristic = None
         self.event_characteristic = None
+        self.state_characteristic = None
+        self.data_characteristic = None
+
         self.event_descriptor = None
 
         # ----------------------------------------------------
@@ -139,12 +144,23 @@ class AndroidBLE:
         self.notifications_enabled = False
 
         # ----------------------------------------------------
-        # Command queue
+        # COMMAND queue
         # ----------------------------------------------------
 
         self.command_queue = deque()
-
         self.command_write_busy = False
+
+        # ----------------------------------------------------
+        # DATA queue
+        # ----------------------------------------------------
+
+        self.data_queue = deque()
+        self.data_write_busy = False
+
+        # ----------------------------------------------------
+        # Descriptor
+        # ----------------------------------------------------
+
         self.descriptor_write_busy = False
 
         # ----------------------------------------------------
@@ -186,19 +202,11 @@ class AndroidBLE:
             self.PythonJavaClass = PythonJavaClass
             self.java_method = java_method
 
-            # ------------------------------------------------
-            # Activity
-            # ------------------------------------------------
-
             Activity = autoclass(
                 "org.kivy.android.PythonActivity"
             )
 
             self.context = Activity.mActivity
-
-            # ------------------------------------------------
-            # Android SDK
-            # ------------------------------------------------
 
             Version = autoclass(
                 "android.os.Build$VERSION"
@@ -207,10 +215,6 @@ class AndroidBLE:
             self.sdk = int(
                 Version.SDK_INT
             )
-
-            # ------------------------------------------------
-            # Bluetooth Adapter
-            # ------------------------------------------------
 
             BluetoothAdapter = autoclass(
                 "android.bluetooth.BluetoothAdapter"
@@ -283,10 +287,6 @@ class AndroidBLE:
                     if device is None:
                         return
 
-                    # ----------------------------------------
-                    # Device name
-                    # ----------------------------------------
-
                     try:
 
                         name = device.getName()
@@ -302,10 +302,6 @@ class AndroidBLE:
                     ):
                         return
 
-                    # ----------------------------------------
-                    # Address
-                    # ----------------------------------------
-
                     try:
 
                         address = str(
@@ -315,10 +311,6 @@ class AndroidBLE:
                     except Exception:
 
                         address = "UNKNOWN"
-
-                    # ----------------------------------------
-                    # Save device
-                    # ----------------------------------------
 
                     outer.found_device = device
                     outer.found_name = str(name)
@@ -332,10 +324,6 @@ class AndroidBLE:
                         f"address={address} | "
                         f"rssi={rssi}"
                     )
-
-                    # ----------------------------------------
-                    # Stop scan
-                    # ----------------------------------------
 
                     try:
 
@@ -395,17 +383,9 @@ class AndroidBLE:
 
             return
 
-        # ----------------------------------------------------
-        # Close previous GATT
-        # ----------------------------------------------------
-
         if self.gatt is not None:
 
             self._close_gatt()
-
-        # ----------------------------------------------------
-        # Reset scan state
-        # ----------------------------------------------------
 
         self.found_device = None
         self.found_address = None
@@ -418,13 +398,11 @@ class AndroidBLE:
         self.notifications_enabled = False
 
         self.command_queue.clear()
+        self.data_queue.clear()
 
         self.command_write_busy = False
+        self.data_write_busy = False
         self.descriptor_write_busy = False
-
-        # ----------------------------------------------------
-        # Create callback
-        # ----------------------------------------------------
 
         self._create_scan_callback()
 
@@ -575,6 +553,7 @@ class AndroidBLE:
             self.notifications_enabled = False
 
             self.command_write_busy = False
+            self.data_write_busy = False
             self.descriptor_write_busy = False
 
             self.log(
@@ -683,10 +662,6 @@ class AndroidBLE:
                 f"state={state}"
             )
 
-            # ------------------------------------------------
-            # CONNECTED
-            # ------------------------------------------------
-
             if state == STATE_CONNECTED:
 
                 try:
@@ -727,10 +702,6 @@ class AndroidBLE:
                         f"SERVICE DISCOVERY ERROR: {exc}"
                     )
 
-            # ------------------------------------------------
-            # DISCONNECTED
-            # ------------------------------------------------
-
             elif state == STATE_DISCONNECTED:
 
                 self.connected = False
@@ -740,12 +711,18 @@ class AndroidBLE:
                 self.notifications_enabled = False
 
                 self.command_write_busy = False
+                self.data_write_busy = False
                 self.descriptor_write_busy = False
 
                 self.service = None
                 self.command_characteristic = None
                 self.event_characteristic = None
+                self.state_characteristic = None
+                self.data_characteristic = None
                 self.event_descriptor = None
+
+                self.command_queue.clear()
+                self.data_queue.clear()
 
                 self.log(
                     f"GATT DISCONNECTED | "
@@ -803,10 +780,6 @@ class AndroidBLE:
                     "java.util.UUID"
                 )
 
-                # --------------------------------------------
-                # Service
-                # --------------------------------------------
-
                 self.service = (
                     self.gatt.getService(
                         UUID.fromString(
@@ -828,7 +801,7 @@ class AndroidBLE:
                 )
 
                 # --------------------------------------------
-                # Command characteristic
+                # COMMAND
                 # --------------------------------------------
 
                 self.command_characteristic = (
@@ -840,7 +813,7 @@ class AndroidBLE:
                 )
 
                 # --------------------------------------------
-                # Event characteristic
+                # EVENT
                 # --------------------------------------------
 
                 self.event_characteristic = (
@@ -852,8 +825,28 @@ class AndroidBLE:
                 )
 
                 # --------------------------------------------
-                # Validate command
+                # STATE
                 # --------------------------------------------
+
+                self.state_characteristic = (
+                    self.service.getCharacteristic(
+                        UUID.fromString(
+                            STATE_UUID
+                        )
+                    )
+                )
+
+                # --------------------------------------------
+                # DATA
+                # --------------------------------------------
+
+                self.data_characteristic = (
+                    self.service.getCharacteristic(
+                        UUID.fromString(
+                            DATA_UUID
+                        )
+                    )
+                )
 
                 if self.command_characteristic is None:
 
@@ -864,14 +857,19 @@ class AndroidBLE:
 
                     return
 
-                # --------------------------------------------
-                # Validate event
-                # --------------------------------------------
-
                 if self.event_characteristic is None:
 
                     self.log(
                         "ERROR: EVENT CHARACTERISTIC "
+                        "NOT FOUND."
+                    )
+
+                    return
+
+                if self.data_characteristic is None:
+
+                    self.log(
+                        "ERROR: DATA CHARACTERISTIC "
                         "NOT FOUND."
                     )
 
@@ -883,6 +881,16 @@ class AndroidBLE:
 
                 self.log(
                     "EVENT CHARACTERISTIC FOUND."
+                )
+
+                if self.state_characteristic is not None:
+
+                    self.log(
+                        "STATE CHARACTERISTIC FOUND."
+                    )
+
+                self.log(
+                    "DATA CHARACTERISTIC FOUND."
                 )
 
                 # --------------------------------------------
@@ -916,10 +924,6 @@ class AndroidBLE:
                 else ""
             )
 
-            # ------------------------------------------------
-            # Decode Base64
-            # ------------------------------------------------
-
             try:
 
                 text = (
@@ -941,11 +945,16 @@ class AndroidBLE:
                 f"EVENT <- {uuid} | {text}"
             )
 
-            # =================================================
-            # AVA CLOCK REQUEST
-            # =================================================
+            # ------------------------------------------------
+            # TIME REQUEST
+            #
+            # فقط EVENT_UUID معتبر است.
+            # ------------------------------------------------
 
             if (
+                uuid.lower()
+                == EVENT_UUID.lower()
+                and
                 text.strip().upper()
                 == TIME_REQUEST
             ):
@@ -953,11 +962,6 @@ class AndroidBLE:
                 self.log(
                     "[CLOCK] AVA REQUESTED CURRENT TIME."
                 )
-
-                # ------------------------------------------------
-                # Send slightly later so notification handling
-                # can finish safely before writing.
-                # ------------------------------------------------
 
                 Clock.schedule_once(
                     lambda *_:
@@ -983,23 +987,65 @@ class AndroidBLE:
                 else -1
             )
 
-            self.command_write_busy = False
+            # ------------------------------------------------
+            # COMMAND WRITE
+            # ------------------------------------------------
 
-            if status == GATT_SUCCESS:
+            if uuid.lower() == COMMAND_UUID.lower():
 
-                self.log(
-                    f"WRITE OK | {uuid}"
-                )
+                self.command_write_busy = False
+
+                if status == GATT_SUCCESS:
+
+                    self.log(
+                        f"COMMAND WRITE OK | {uuid}"
+                    )
+
+                else:
+
+                    self.log(
+                        f"COMMAND WRITE FAILED | "
+                        f"{uuid} | "
+                        f"status={status}"
+                    )
+
+                self._process_command_queue()
+
+            # ------------------------------------------------
+            # DATA WRITE
+            # ------------------------------------------------
+
+            elif uuid.lower() == DATA_UUID.lower():
+
+                self.data_write_busy = False
+
+                if status == GATT_SUCCESS:
+
+                    self.log(
+                        f"DATA WRITE OK | {uuid}"
+                    )
+
+                else:
+
+                    self.log(
+                        f"DATA WRITE FAILED | "
+                        f"{uuid} | "
+                        f"status={status}"
+                    )
+
+                self._process_data_queue()
+
+            # ------------------------------------------------
+            # UNKNOWN WRITE
+            # ------------------------------------------------
 
             else:
 
                 self.log(
-                    f"WRITE FAILED | "
+                    f"WRITE EVENT UNKNOWN UUID | "
                     f"{uuid} | "
                     f"status={status}"
                 )
-
-            self._process_command_queue()
 
         # ====================================================
         # DESCRIPTOR
@@ -1038,11 +1084,8 @@ class AndroidBLE:
                     "AVA READY."
                 )
 
-                # ------------------------------------------------
-                # Process any commands waiting for READY.
-                # ------------------------------------------------
-
                 self._process_command_queue()
+                self._process_data_queue()
 
             else:
 
@@ -1091,10 +1134,6 @@ class AndroidBLE:
 
         try:
 
-            # ------------------------------------------------
-            # Current phone time
-            # ------------------------------------------------
-
             now = datetime.now()
 
             time_text = now.strftime(
@@ -1104,10 +1143,6 @@ class AndroidBLE:
             date_text = now.strftime(
                 "%Y-%m-%d"
             )
-
-            # ------------------------------------------------
-            # AVA protocol
-            # ------------------------------------------------
 
             command = (
                 f"{TIME_RESPONSE}|"
@@ -1126,15 +1161,15 @@ class AndroidBLE:
             )
 
             self.log(
-                f"[CLOCK] RESPONSE -> "
+                f"[CLOCK] DATA RESPONSE -> "
                 f"{command}"
             )
 
-            # ------------------------------------------------
-            # Send through normal BLE queue
-            # ------------------------------------------------
+            # IMPORTANT:
+            # Clock response goes through DATA,
+            # NOT COMMAND.
 
-            return self.write_command(
+            return self.write_data(
                 command
             )
 
@@ -1148,7 +1183,7 @@ class AndroidBLE:
             return False
 
     # ========================================================
-    # ENABLE NOTIFICATIONS
+    # ENABLE EVENT NOTIFICATIONS
     # ========================================================
 
     def enable_notifications(self):
@@ -1167,10 +1202,6 @@ class AndroidBLE:
 
         try:
 
-            # ------------------------------------------------
-            # Local Android notification registration
-            # ------------------------------------------------
-
             if not self.gatt.setCharacteristicNotification(
                 self.event_characteristic,
                 True
@@ -1187,10 +1218,6 @@ class AndroidBLE:
             UUID = self.autoclass(
                 "java.util.UUID"
             )
-
-            # ------------------------------------------------
-            # CCCD
-            # ------------------------------------------------
 
             descriptor = (
                 self.event_characteristic.getDescriptor(
@@ -1252,6 +1279,8 @@ class AndroidBLE:
 
     # ========================================================
     # WRITE COMMAND
+    #
+    # Phone -> AVA COMMAND characteristic
     # ========================================================
 
     def write_command(self, command):
@@ -1278,10 +1307,6 @@ class AndroidBLE:
 
         if not command:
             return False
-
-        # ----------------------------------------------------
-        # Add to queue
-        # ----------------------------------------------------
 
         self.command_queue.append(
             command
@@ -1319,10 +1344,6 @@ class AndroidBLE:
 
         try:
 
-            # ------------------------------------------------
-            # Set payload
-            # ------------------------------------------------
-
             self.command_characteristic.setValue(
                 command.encode("utf-8")
             )
@@ -1335,10 +1356,6 @@ class AndroidBLE:
             props = int(
                 self.command_characteristic.getProperties()
             )
-
-            # ------------------------------------------------
-            # Determine write type
-            # ------------------------------------------------
 
             if (
                 props
@@ -1362,10 +1379,6 @@ class AndroidBLE:
                 name = "WRITE"
 
             self.command_write_busy = True
-
-            # ------------------------------------------------
-            # Write
-            # ------------------------------------------------
 
             if not self.gatt.writeCharacteristic(
                 self.command_characteristic
@@ -1391,15 +1404,10 @@ class AndroidBLE:
                 f"COMMAND -> {command} | {name}"
             )
 
-            # ------------------------------------------------
-            # WRITE_NO_RESPONSE has no normal callback.
-            # Release queue after a short safety delay.
-            # ------------------------------------------------
-
             if name == "WRITE_NO_RESPONSE":
 
                 Clock.schedule_once(
-                    self._release_no_response_write,
+                    self._release_no_response_command,
                     0.08
                 )
 
@@ -1418,16 +1426,188 @@ class AndroidBLE:
             )
 
     # ========================================================
-    # RELEASE NO RESPONSE
+    # RELEASE COMMAND NO RESPONSE
     # ========================================================
 
-    def _release_no_response_write(self, *_):
+    def _release_no_response_command(self, *_):
 
         if self.command_write_busy:
 
             self.command_write_busy = False
 
             self._process_command_queue()
+
+    # ========================================================
+    # WRITE DATA
+    #
+    # Phone -> AVA DATA characteristic
+    #
+    # Example:
+    # TIME_RESPONSE|22:41:30|2026-09-01
+    # ========================================================
+
+    def write_data(self, data):
+
+        if not self.connected:
+
+            self.log(
+                "DATA ERROR: "
+                "AVA NOT GATT CONNECTED."
+            )
+
+            return False
+
+        if not self.ready:
+
+            self.log(
+                "DATA ERROR: "
+                "AVA GATT NOT READY."
+            )
+
+            return False
+
+        data = str(data).strip()
+
+        if not data:
+            return False
+
+        if self.data_characteristic is None:
+
+            self.log(
+                "DATA ERROR: "
+                "DATA CHARACTERISTIC UNAVAILABLE."
+            )
+
+            return False
+
+        self.data_queue.append(
+            data
+        )
+
+        self._process_data_queue()
+
+        return True
+
+    # ========================================================
+    # DATA QUEUE
+    # ========================================================
+
+    def _process_data_queue(self):
+
+        if (
+            self.data_write_busy
+            or not self.connected
+            or not self.ready
+        ):
+
+            return
+
+        if (
+            self.gatt is None
+            or self.data_characteristic is None
+            or not self.data_queue
+        ):
+
+            return
+
+        data = (
+            self.data_queue.popleft()
+        )
+
+        try:
+
+            self.data_characteristic.setValue(
+                data.encode("utf-8")
+            )
+
+            Characteristic = self.autoclass(
+                "android.bluetooth."
+                "BluetoothGattCharacteristic"
+            )
+
+            props = int(
+                self.data_characteristic.getProperties()
+            )
+
+            if (
+                props
+                & int(
+                    Characteristic.PROPERTY_WRITE_NO_RESPONSE
+                )
+            ):
+
+                self.data_characteristic.setWriteType(
+                    WRITE_TYPE_NO_RESPONSE
+                )
+
+                name = "WRITE_NO_RESPONSE"
+
+            else:
+
+                self.data_characteristic.setWriteType(
+                    WRITE_TYPE_DEFAULT
+                )
+
+                name = "WRITE"
+
+            self.data_write_busy = True
+
+            if not self.gatt.writeCharacteristic(
+                self.data_characteristic
+            ):
+
+                self.data_write_busy = False
+
+                self.log(
+                    f"DATA WRITE REQUEST FAILED | "
+                    f"{data} | "
+                    f"{name}"
+                )
+
+                Clock.schedule_once(
+                    lambda *_:
+                    self._process_data_queue(),
+                    0.05
+                )
+
+                return
+
+            self.log(
+                f"DATA -> {data} | {name}"
+            )
+
+            if name == "WRITE_NO_RESPONSE":
+
+                Clock.schedule_once(
+                    self._release_no_response_data,
+                    0.08
+                )
+
+        except Exception as exc:
+
+            self.data_write_busy = False
+
+            self.log(
+                f"DATA WRITE ERROR: {exc}"
+            )
+
+            Clock.schedule_once(
+                lambda *_:
+                self._process_data_queue(),
+                0.05
+            )
+
+    # ========================================================
+    # RELEASE DATA NO RESPONSE
+    # ========================================================
+
+    def _release_no_response_data(self, *_):
+
+        if self.data_write_busy:
+
+            self.data_write_busy = False
+
+            self._process_data_queue()
 
     # ========================================================
     # CLOSE GATT
@@ -1444,15 +1624,19 @@ class AndroidBLE:
         self.notifications_enabled = False
 
         self.command_write_busy = False
+        self.data_write_busy = False
         self.descriptor_write_busy = False
 
         self.service = None
 
         self.command_characteristic = None
         self.event_characteristic = None
+        self.state_characteristic = None
+        self.data_characteristic = None
         self.event_descriptor = None
 
         self.command_queue.clear()
+        self.data_queue.clear()
 
         self.gatt = None
 
@@ -1613,18 +1797,6 @@ class AvaPetApp(App):
         )
 
         # ====================================================
-        # CLOCK
-        # ====================================================
-
-        root.add_widget(
-            self.command_row(
-                (
-                    ("TIME_TEST", "TIME"),
-                )
-            )
-        )
-
-        # ====================================================
         # LOG
         # ====================================================
 
@@ -1740,24 +1912,6 @@ class AvaPetApp(App):
     # ========================================================
 
     def test_command(self, command):
-
-        # ----------------------------------------------------
-        # Manual Clock test
-        # ----------------------------------------------------
-
-        if command == "TIME_TEST":
-
-            self.add_log(
-                "[CLOCK] MANUAL TIME TEST."
-            )
-
-            self.ble.send_current_time_to_ava()
-
-            return
-
-        # ----------------------------------------------------
-        # Normal command
-        # ----------------------------------------------------
 
         self.ble.write_command(
             command
