@@ -10,7 +10,8 @@ from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
+from kivy.uix.image import Image
+from kivy.uix.floatlayout import FloatLayout
 
 from jnius import autoclass, PythonJavaClass, java_method
 
@@ -81,6 +82,16 @@ else:
 
 
 FONT_NAME = "Orbitron"
+
+
+# ============================================================
+# BACKGROUND
+# ============================================================
+
+BACKGROUND_PATH = os.path.join(
+    BASE_DIR,
+    "IMG_20260902_023056_844.jpg"
+)
 
 
 # ============================================================
@@ -1692,303 +1703,177 @@ class AvaPetApp(App):
 
         self.title = "AVA PET"
 
-        root = BoxLayout(
-            orientation="vertical",
-            padding=dp(12),
-            spacing=dp(8)
+        # ----------------------------------------------------
+        # ROOT
+        # ----------------------------------------------------
+
+        self.root_layout = FloatLayout()
+
+        # ----------------------------------------------------
+        # BACKGROUND
+        # ----------------------------------------------------
+
+        self.background = Image(
+            source=BACKGROUND_PATH,
+            allow_stretch=True,
+            keep_ratio=False,
+            size_hint=(1, 1),
+            pos_hint={
+                "x": 0,
+                "y": 0
+            }
         )
 
-        # ====================================================
-        # TITLE
-        # ====================================================
-
-        root.add_widget(
-            Label(
-                text="[b]AVA PET[/b]",
-                markup=True,
-                font_name=FONT_NAME,
-                font_size=dp(28),
-                size_hint_y=None,
-                height=dp(55)
-            )
+        self.root_layout.add_widget(
+            self.background
         )
 
-        # ====================================================
-        # STATUS
-        # ====================================================
+        # ----------------------------------------------------
+        # PAGE 1
+        # ----------------------------------------------------
 
-        self.status_label = Label(
-            text="DISCONNECTED",
+        self.finding_page = FloatLayout(
+            size_hint=(1, 1)
+        )
+
+        # ----------------------------------------------------
+        # FINDING AVA
+        # ----------------------------------------------------
+
+        self.finding_label = Label(
+            text="Finding AVA",
             font_name=FONT_NAME,
-            font_size=dp(18),
-            size_hint_y=None,
-            height=dp(42)
+            font_size=dp(27),
+            size_hint=(1, None),
+            height=dp(60),
+            pos_hint={
+                "center_x": 0.5,
+                "top": 0.88
+            }
         )
 
-        root.add_widget(
-            self.status_label
+        self.finding_page.add_widget(
+            self.finding_label
         )
 
-        # ====================================================
-        # CONNECTION BUTTONS
-        # ====================================================
+        # ----------------------------------------------------
+        # AVA FOUND BOX
+        # ----------------------------------------------------
 
-        row = BoxLayout(
-            size_hint_y=None,
-            height=dp(50),
-            spacing=dp(8)
+        self.ava_found_box = BoxLayout(
+            orientation="horizontal",
+            spacing=dp(12),
+            size_hint=(None, None),
+            width=dp(285),
+            height=dp(55),
+            pos_hint={
+                "center_x": 0.5,
+                "center_y": 0.52
+            }
         )
 
-        for title, callback in (
-            ("SCAN", self.ble_scan),
-            ("CONNECT", self.connect_ava),
-            ("DISCONNECT", self.disconnect_ava)
-        ):
+        # ----------------------------------------------------
+        # AVA NAME
+        # ----------------------------------------------------
 
-            button = Button(
-                text=title,
-                font_name=FONT_NAME
-            )
-
-            button.bind(
-                on_release=callback
-            )
-
-            row.add_widget(
-                button
-            )
-
-        root.add_widget(
-            row
-        )
-
-        # ====================================================
-        # EYES
-        # ====================================================
-
-        root.add_widget(
-            self.command_row(
-                (
-                    ("EYES_CALM", "CALM"),
-                    ("EYES_HAPPY", "HAPPY"),
-                    ("EYES_SAD", "SAD")
-                )
-            )
-        )
-
-        root.add_widget(
-            self.command_row(
-                (
-                    ("EYES_SLEEPY", "SLEEPY"),
-                    ("EYES_THINKING", "THINKING"),
-                    ("EYES_LISTENING", "LISTENING")
-                )
-            )
-        )
-
-        root.add_widget(
-            self.command_row(
-                (
-                    ("EYES_SURPRISED", "SURPRISED"),
-                    ("BLINK", "BLINK"),
-                    ("HELLO_AVA", "HELLO")
-                )
-            )
-        )
-
-        # ====================================================
-        # LOG
-        # ====================================================
-
-        self.log_label = Label(
-            text="AVA log:",
+        self.ava_name_label = Label(
+            text="",
             font_name=FONT_NAME,
-            size_hint_y=None,
-            halign="left",
-            valign="top"
+            font_size=dp(20),
+            halign="center",
+            valign="middle"
         )
 
-        self.log_label.bind(
-            texture_size=self.update_log_height
+        self.ava_found_box.add_widget(
+            self.ava_name_label
         )
 
-        scroll = ScrollView()
+        # ----------------------------------------------------
+        # CONNECT
+        # ----------------------------------------------------
 
-        scroll.add_widget(
-            self.log_label
+        self.connect_button = Button(
+            text="CONNECT",
+            font_name=FONT_NAME,
+            font_size=dp(15),
+            size_hint_x=None,
+            width=dp(125)
         )
 
-        root.add_widget(
-            scroll
+        self.connect_button.bind(
+            on_release=self.connect_ava
         )
 
-        # ====================================================
+        self.ava_found_box.add_widget(
+            self.connect_button
+        )
+
+        # ----------------------------------------------------
+        # HIDDEN UNTIL AVA FOUND
+        # ----------------------------------------------------
+
+        self.ava_found_box.opacity = 0
+        self.ava_found_box.disabled = True
+
+        self.finding_page.add_widget(
+            self.ava_found_box
+        )
+
+        self.root_layout.add_widget(
+            self.finding_page
+        )
+
+        # ----------------------------------------------------
+        # PAGE 2
+        # ----------------------------------------------------
+
+        self.coming_soon_page = FloatLayout(
+            size_hint=(1, 1)
+        )
+
+        self.coming_soon_label = Label(
+            text="COMING SOON",
+            font_name=FONT_NAME,
+            font_size=dp(30),
+            size_hint=(1, None),
+            height=dp(70),
+            pos_hint={
+                "center_x": 0.5,
+                "center_y": 0.5
+            }
+        )
+
+        self.coming_soon_page.add_widget(
+            self.coming_soon_label
+        )
+
+        self.root_layout.add_widget(
+            self.coming_soon_page
+        )
+
+        # ----------------------------------------------------
+        # PAGE 2 HIDDEN
+        # ----------------------------------------------------
+
+        self.coming_soon_page.opacity = 0
+        self.coming_soon_page.disabled = True
+
+        # ----------------------------------------------------
         # BLE
-        # ====================================================
+        #
+        # IMPORTANT:
+        # AndroidBLE remains intact.
+        # Clock communication remains intact.
+        # ----------------------------------------------------
 
         self.ble = AndroidBLE(
             self.add_log
         )
 
-        return root
+        return self.root_layout
 
     # ========================================================
-    # SCAN
-    # ========================================================
-
-    def ble_scan(self, *_):
-
-        self.ble.scan()
-
-    # ========================================================
-    # COMMAND ROW
-    # ========================================================
-
-    def command_row(self, commands):
-
-        row = BoxLayout(
-            size_hint_y=None,
-            height=dp(48),
-            spacing=dp(6)
-        )
-
-        for command, title in commands:
-
-            button = Button(
-                text=title,
-                font_name=FONT_NAME
-            )
-
-            button.bind(
-                on_release=lambda _, cmd=command:
-                self.test_command(cmd)
-            )
-
-            row.add_widget(
-                button
-            )
-
-        return row
-
-    # ========================================================
-    # CONNECT
-    # ========================================================
-
-    def connect_ava(self, *_):
-
-        if not self.ble.has_ava():
-
-            self.add_log(
-                "CONNECT: SCAN FOR AVA FIRST."
-            )
-
-            return
-
-        self.add_log(
-            "AVA DISCOVERED. "
-            "STARTING GATT CONNECTION..."
-        )
-
-        self.status_label.text = (
-            "CONNECTING..."
-        )
-
-        self.ble.connect()
-
-    # ========================================================
-    # DISCONNECT
-    # ========================================================
-
-    def disconnect_ava(self, *_):
-
-        self.ble.disconnect()
-
-        self.status_label.text = (
-            "DISCONNECTED"
-        )
-
-    # ========================================================
-    # TEST COMMAND
-    # ========================================================
-
-    def test_command(self, command):
-
-        self.ble.write_command(
-            command
-        )
-
-    # ========================================================
-    # LOG
-    # ========================================================
-
-    def add_log(self, message):
-
-        text = str(message)
-        upper = text.upper()
-
-        # ----------------------------------------------------
-        # Status
-        # ----------------------------------------------------
-
-        if "AVA FOUND" in upper:
-
-            self.status_label.text = (
-                "AVA FOUND"
-            )
-
-        if "GATT CONNECTION REQUESTED" in upper:
-
-            self.status_label.text = (
-                "CONNECTING..."
-            )
-
-        if "GATT CONNECTED" in upper:
-
-            self.status_label.text = (
-                "GATT CONNECTED"
-            )
-
-        if "AVA READY" in upper:
-
-            self.status_label.text = (
-                "AVA READY"
-            )
-
-        if "GATT DISCONNECTED" in upper:
-
-            self.status_label.text = (
-                "DISCONNECTED"
-            )
-
-        # ----------------------------------------------------
-        # Log text
-        # ----------------------------------------------------
-
-        if self.log_label.text == "AVA log:":
-
-            self.log_label.text = ""
-
-        self.log_label.text += (
-            "\n" + text
-        )
-
-    # ========================================================
-    # LOG HEIGHT
-    # ========================================================
-
-    def update_log_height(
-        self,
-        widget,
-        texture_size
-    ):
-
-        widget.height = max(
-            texture_size[1],
-            dp(120)
-        )
-
-    # ========================================================
-    # ANDROID PERMISSIONS
+    # START
     # ========================================================
 
     def on_start(self):
@@ -2029,11 +1914,167 @@ class AvaPetApp(App):
                 permissions
             )
 
+            # ------------------------------------------------
+            # Start scan after permissions request.
+            # ------------------------------------------------
+
+            Clock.schedule_once(
+                self.start_automatic_scan,
+                1.5
+            )
+
         except Exception as exc:
 
             self.add_log(
                 f"PERMISSION ERROR: {exc}"
             )
+
+            Clock.schedule_once(
+                self.start_automatic_scan,
+                1.5
+            )
+
+    # ========================================================
+    # AUTOMATIC SCAN
+    # ========================================================
+
+    def start_automatic_scan(self, *_):
+
+        self.finding_label.text = (
+            "Finding AVA"
+        )
+
+        self.ava_found_box.opacity = 0
+        self.ava_found_box.disabled = True
+
+        self.add_log(
+            "STARTING AUTOMATIC AVA SCAN..."
+        )
+
+        self.ble.scan()
+
+    # ========================================================
+    # CONNECT
+    # ========================================================
+
+    def connect_ava(self, *_):
+
+        if not self.ble.has_ava():
+
+            self.add_log(
+                "CONNECT: AVA NOT FOUND."
+            )
+
+            return
+
+        self.finding_label.text = (
+            "Connecting to AVA"
+        )
+
+        self.connect_button.disabled = True
+
+        self.add_log(
+            "AVA DISCOVERED. "
+            "STARTING GATT CONNECTION..."
+        )
+
+        self.ble.connect()
+
+    # ========================================================
+    # SHOW COMING SOON
+    # ========================================================
+
+    def show_coming_soon(self):
+
+        self.finding_page.opacity = 0
+        self.finding_page.disabled = True
+
+        self.coming_soon_page.opacity = 1
+        self.coming_soon_page.disabled = False
+
+    # ========================================================
+    # LOG
+    # ========================================================
+
+    def add_log(self, message):
+
+        text = str(message)
+        upper = text.upper()
+
+        # ----------------------------------------------------
+        # AVA FOUND
+        # ----------------------------------------------------
+
+        if "AVA FOUND" in upper:
+
+            name = (
+                self.ble.found_name
+                or AVA_NAME
+            )
+
+            self.ava_name_label.text = (
+                str(name)
+            )
+
+            self.finding_label.text = (
+                "AVA FOUND"
+            )
+
+            self.ava_found_box.opacity = 1
+            self.ava_found_box.disabled = False
+
+        # ----------------------------------------------------
+        # CONNECTION REQUESTED
+        # ----------------------------------------------------
+
+        if "GATT CONNECTION REQUESTED" in upper:
+
+            self.finding_label.text = (
+                "Connecting to AVA"
+            )
+
+            self.connect_button.disabled = True
+
+        # ----------------------------------------------------
+        # GATT CONNECTED
+        # ----------------------------------------------------
+
+        if "GATT CONNECTED" in upper:
+
+            self.finding_label.text = (
+                "AVA CONNECTED"
+            )
+
+        # ----------------------------------------------------
+        # AVA READY
+        #
+        # GATT + notifications are fully ready.
+        # ----------------------------------------------------
+
+        if "AVA READY" in upper:
+
+            self.show_coming_soon()
+
+        # ----------------------------------------------------
+        # DISCONNECTED
+        # ----------------------------------------------------
+
+        if "GATT DISCONNECTED" in upper:
+
+            self.finding_page.opacity = 1
+            self.finding_page.disabled = False
+
+            self.coming_soon_page.opacity = 0
+            self.coming_soon_page.disabled = True
+
+            self.finding_label.text = (
+                "Finding AVA"
+            )
+
+            self.connect_button.disabled = False
+
+            self.ava_found_box.opacity = 0
+            self.ava_found_box.disabled = True
 
 
 # ============================================================
