@@ -626,7 +626,6 @@ class AvaPetApp(App):
             color=(1, 1, 1, 1),
         )
         self.connect_button.bind(on_press=self.connect_ava)
-        self.finding_page.add_widget(self.connect_button)
 
         self.ava_name_label.opacity = 0
         self.connect_button.opacity = 0
@@ -647,6 +646,11 @@ class AvaPetApp(App):
         self.root_layout.add_widget(self.coming_soon_page)
         self.coming_soon_page.opacity = 0
         self.coming_soon_page.disabled = True
+
+        # CONNECT is intentionally a direct child of the root layout.
+        # This keeps the actual touch target above the page overlays and
+        # prevents a full-screen FloatLayout from swallowing the tap.
+        self.root_layout.add_widget(self.connect_button)
 
         self.ble = AndroidBLE(self.add_log)
         return self.root_layout
@@ -713,6 +717,8 @@ class AvaPetApp(App):
             self.connect_button.disabled = False
 
     def show_coming_soon(self):
+        self.connect_button.disabled = True
+        self.connect_button.opacity = 0
         self.finding_page.opacity = 0
         self.finding_page.disabled = True
         self.coming_soon_page.opacity = 1
