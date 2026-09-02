@@ -20,7 +20,7 @@ requirements = python3==3.11.5,kivy==2.3.1,pyjnius==1.6.1,filetype==1.2.0
 
 # AVA PET is a landscape application.
 orientation = landscape
-fullscreen = 0
+fullscreen = 1
 
 # Android 10+ = API 29+
 # Target API 31 so Android 12+ Nearby Devices permissions are handled
