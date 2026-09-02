@@ -909,12 +909,21 @@ class AvaPetApp(App):
             if str(game_id).upper() == "MATH_BATTLE":
                 self.reset_math_state()
                 self.game_id = "MATH_BATTLE"
-                self.games_status.text = "MATH BATTLE READY"
+                self.games_status.text = "MATH BATTLE STARTING"
                 self.math_page.opacity = 1
                 self.math_page.disabled = False
                 self.games_page.opacity = 0
                 self.games_page.disabled = True
-                self.math_answer_label.text = "WAITING FOR AVA..."
+                self.math_answer_label.text = "STARTING GAME..."
+
+                # GAME_LOAD only loads the game on ESP32. GAME_START is
+                # required to generate round 1 and publish the shared question.
+                if self.ble.write_command("GAME_START"):
+                    self.add_log("GAME START -> MATH_BATTLE")
+                else:
+                    self.add_log("GAME START QUEUE FAILED")
+                    self.games_status.text = "GAME START FAILED"
+                    self.math_answer_label.text = "GAME START FAILED"
         else:
             self.games_status.text = "GAME LOAD FAILED"
             self.add_log(f"GAME COMMAND FAILED | {command}")
