@@ -13,6 +13,7 @@ import java.util.List;
 public final class AvaGattCallback extends BluetoothGattCallback {
     private final List<String> events = new ArrayList<>();
     private BluetoothGatt currentGatt;
+    private int reconnectAttempts = 0;
 
     private synchronized void push(String event) { events.add(event); }
 
@@ -27,6 +28,32 @@ public final class AvaGattCallback extends BluetoothGattCallback {
     @Override
     public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
         currentGatt = gatt;
+
+        if (newState == BluetoothGatt.STATE_CONNECTED) {
+            reconnectAttempts = 0;
+            push("STATE|" + status + "|" + newState);
+            return;
+        }
+
+        // Android BLE can occasionally return a transient GATT error (most
+        // notably 133) immediately after discovery. Retry the same GATT
+        // connection a couple of times before reporting the disconnect.
+        if (newState == BluetoothGatt.STATE_DISCONNECTED && status != BluetoothGatt.GATT_SUCCESS && reconnectAttempts < 2) {
+            reconnectAttempts++;
+            final BluetoothGatt retryGatt = gatt;
+            new Thread(() -> {
+                try {
+                    Thread.sleep(600L);
+                    if (retryGatt != null) {
+                        retryGatt.connect();
+                    }
+                } catch (Exception ignored) {
+                }
+            }).start();
+            push("RETRY|" + status + "|" + reconnectAttempts);
+            return;
+        }
+
         push("STATE|" + status + "|" + newState);
     }
 
