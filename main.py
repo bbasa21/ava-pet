@@ -11,7 +11,11 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
 from jnius import autoclass, PythonJavaClass, java_method
+
+from ava_games import AVAILABLE_GAMES, game_load_command
 
 AVA_NAME = "AVA"
 SERVICE_UUID = "7b7a0001-6a76-4156-9a76-415641000001"
@@ -632,20 +636,64 @@ class AvaPetApp(App):
         self.connect_button.disabled = True
         self.root_layout.add_widget(self.finding_page)
 
-        self.coming_soon_page = FloatLayout(size_hint=(1, 1))
-        self.coming_soon_label = Label(
-            text="COMING SOON",
+        self.games_page = FloatLayout(size_hint=(1, 1))
+
+        self.games_title = Label(
+            text="MY GAMES",
             font_name=FONT_NAME,
-            font_size=dp(30),
+            font_size=dp(28),
             color=(1, 1, 1, 1),
             size_hint=(1, None),
-            height=dp(70),
-            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            height=dp(60),
+            pos_hint={"center_x": 0.5, "top": 0.93},
         )
-        self.coming_soon_page.add_widget(self.coming_soon_label)
-        self.root_layout.add_widget(self.coming_soon_page)
-        self.coming_soon_page.opacity = 0
-        self.coming_soon_page.disabled = True
+        self.games_page.add_widget(self.games_title)
+
+        self.games_status = Label(
+            text="CHOOSE A GAME",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(40),
+            pos_hint={"center_x": 0.5, "top": 0.82},
+        )
+        self.games_page.add_widget(self.games_status)
+
+        self.games_scroll = ScrollView(
+            size_hint=(0.86, 0.68),
+            pos_hint={"center_x": 0.5, "y": 0.07},
+            do_scroll_x=False,
+            bar_width=dp(4),
+        )
+        self.games_list = GridLayout(
+            cols=1,
+            spacing=dp(10),
+            padding=[dp(8), dp(8), dp(8), dp(16)],
+            size_hint_y=None,
+        )
+        self.games_list.bind(minimum_height=self.games_list.setter("height"))
+
+        for game_id, title, subtitle in AVAILABLE_GAMES:
+            game_button = Button(
+                text=f"{title}\n{subtitle}",
+                font_name=FONT_NAME,
+                font_size=dp(14),
+                size_hint_y=None,
+                height=dp(62),
+                background_normal="",
+                background_down="",
+                background_color=(0.45, 0.12, 0.75, 0.9),
+                color=(1, 1, 1, 1),
+            )
+            game_button.bind(on_press=lambda _, gid=game_id: self.select_game(gid))
+            self.games_list.add_widget(game_button)
+
+        self.games_scroll.add_widget(self.games_list)
+        self.games_page.add_widget(self.games_scroll)
+        self.root_layout.add_widget(self.games_page)
+        self.games_page.opacity = 0
+        self.games_page.disabled = True
 
         # CONNECT is intentionally a direct child of the root layout.
         # This keeps the actual touch target above the page overlays and
@@ -699,6 +747,8 @@ class AvaPetApp(App):
         self.ava_name_label.opacity = 0
         self.connect_button.opacity = 0
         self.connect_button.disabled = True
+        self.games_page.opacity = 0
+        self.games_page.disabled = True
         self.add_log("STARTING AUTOMATIC AVA SCAN...")
         self.ble.scan()
 
@@ -716,13 +766,25 @@ class AvaPetApp(App):
             self.finding_label.text = "CONNECTION FAILED"
             self.connect_button.disabled = False
 
-    def show_coming_soon(self):
+    def show_my_games(self):
         self.connect_button.disabled = True
         self.connect_button.opacity = 0
         self.finding_page.opacity = 0
         self.finding_page.disabled = True
-        self.coming_soon_page.opacity = 1
-        self.coming_soon_page.disabled = False
+        self.games_page.opacity = 1
+        self.games_page.disabled = False
+        self.games_status.text = "CHOOSE A GAME"
+
+    def select_game(self, game_id):
+        command = game_load_command(game_id)
+        self.games_status.text = f"LOADING {game_id}"
+        self.add_log(f"GAME LOAD -> {game_id}")
+        if self.ble.write_command(command):
+            self.games_status.text = f"LOADED: {game_id}"
+            self.add_log(f"GAME COMMAND SENT | {command}")
+        else:
+            self.games_status.text = "GAME LOAD FAILED"
+            self.add_log(f"GAME COMMAND FAILED | {command}")
 
     def add_log(self, message):
         upper = str(message).upper()
@@ -740,12 +802,12 @@ class AvaPetApp(App):
         if "GATT RETRY REQUESTED" in upper:
             self.finding_label.text = "Retrying AVA"
         if "AVA READY" in upper:
-            self.show_coming_soon()
+            self.show_my_games()
         if "GATT DISCONNECTED" in upper:
             self.finding_page.opacity = 1
             self.finding_page.disabled = False
-            self.coming_soon_page.opacity = 0
-            self.coming_soon_page.disabled = True
+            self.games_page.opacity = 0
+            self.games_page.disabled = True
             self.finding_label.text = "Finding AVA"
             self.connect_button.disabled = False
             self.ava_name_label.opacity = 0
