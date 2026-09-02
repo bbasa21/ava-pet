@@ -357,6 +357,8 @@ class AndroidBLE:
             if uuid.lower() == EVENT_UUID.lower() and text.strip().upper() == TIME_REQUEST:
                 self.log("[CLOCK] AVA REQUESTED CURRENT TIME.")
                 Clock.schedule_once(lambda *_: self.send_current_time_to_ava(), 0.05)
+            elif uuid.lower() == DATA_UUID.lower():
+                Clock.schedule_once(lambda *_: self.handle_game_data(text), 0)
             return
 
         if kind == "WRITE":
@@ -584,6 +586,7 @@ class AvaPetApp(App):
     def build(self):
         self.title = "AVA PET"
         self.root_layout = FloatLayout()
+
         self.background = Image(
             source=BACKGROUND_PATH,
             fit_mode="cover",
@@ -592,6 +595,7 @@ class AvaPetApp(App):
         )
         self.root_layout.add_widget(self.background)
 
+        # ---------------- Finding / connection page ----------------
         self.finding_page = FloatLayout(size_hint=(1, 1))
         self.finding_label = Label(
             text="Finding AVA",
@@ -630,14 +634,13 @@ class AvaPetApp(App):
             color=(1, 1, 1, 1),
         )
         self.connect_button.bind(on_press=self.connect_ava)
-
         self.ava_name_label.opacity = 0
         self.connect_button.opacity = 0
         self.connect_button.disabled = True
         self.root_layout.add_widget(self.finding_page)
 
+        # ---------------- My Games page ----------------
         self.games_page = FloatLayout(size_hint=(1, 1))
-
         self.games_title = Label(
             text="MY GAMES",
             font_name=FONT_NAME,
@@ -673,7 +676,6 @@ class AvaPetApp(App):
             size_hint_y=None,
         )
         self.games_list.bind(minimum_height=self.games_list.setter("height"))
-
         for game_id, title, subtitle in AVAILABLE_GAMES:
             game_button = Button(
                 text=f"{title}\n{subtitle}",
@@ -688,16 +690,134 @@ class AvaPetApp(App):
             )
             game_button.bind(on_press=lambda _, gid=game_id: self.select_game(gid))
             self.games_list.add_widget(game_button)
-
         self.games_scroll.add_widget(self.games_list)
         self.games_page.add_widget(self.games_scroll)
         self.root_layout.add_widget(self.games_page)
         self.games_page.opacity = 0
         self.games_page.disabled = True
 
-        # CONNECT is intentionally a direct child of the root layout.
-        # This keeps the actual touch target above the page overlays and
-        # prevents a full-screen FloatLayout from swallowing the tap.
+        # ---------------- MATH BATTLE page ----------------
+        self.math_page = FloatLayout(size_hint=(1, 1))
+        self.math_title = Label(
+            text="MATH BATTLE",
+            font_name=FONT_NAME,
+            font_size=dp(25),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(55),
+            pos_hint={"center_x": 0.5, "top": 0.94},
+        )
+        self.math_page.add_widget(self.math_title)
+
+        self.math_round_label = Label(
+            text="ROUND 1 / 5",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(35),
+            pos_hint={"center_x": 0.5, "top": 0.84},
+        )
+        self.math_page.add_widget(self.math_round_label)
+
+        self.math_score_label = Label(
+            text="ALI: 0     AVA: 0",
+            font_name=FONT_NAME,
+            font_size=dp(15),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(40),
+            pos_hint={"center_x": 0.5, "top": 0.78},
+        )
+        self.math_page.add_widget(self.math_score_label)
+
+        self.math_question_label = Label(
+            text="WAITING FOR QUESTION...",
+            font_name=FONT_NAME,
+            font_size=dp(25),
+            color=(1, 1, 1, 1),
+            size_hint=(0.92, None),
+            height=dp(80),
+            pos_hint={"center_x": 0.5, "top": 0.69},
+            halign="center",
+            valign="middle",
+        )
+        self.math_question_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        self.math_page.add_widget(self.math_question_label)
+
+        self.math_options_grid = GridLayout(
+            cols=2,
+            rows=2,
+            spacing=dp(12),
+            padding=[dp(12), dp(8)],
+            size_hint=(0.88, None),
+            height=dp(150),
+            pos_hint={"center_x": 0.5, "center_y": 0.39},
+        )
+        self.math_option_buttons = []
+        for index in range(4):
+            button = Button(
+                text="-",
+                font_name=FONT_NAME,
+                font_size=dp(19),
+                background_normal="",
+                background_down="",
+                background_color=(0.45, 0.12, 0.75, 0.9),
+                color=(1, 1, 1, 1),
+            )
+            button.bind(on_press=lambda _, idx=index: self.select_math_answer(idx))
+            self.math_option_buttons.append(button)
+            self.math_options_grid.add_widget(button)
+        self.math_page.add_widget(self.math_options_grid)
+
+        self.math_answer_label = Label(
+            text="",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            color=(1, 1, 1, 1),
+            size_hint=(0.94, None),
+            height=dp(55),
+            pos_hint={"center_x": 0.5, "y": 0.16},
+            halign="center",
+            valign="middle",
+        )
+        self.math_answer_label.bind(size=lambda inst, val: setattr(inst, "text_size", val))
+        self.math_page.add_widget(self.math_answer_label)
+
+        self.math_back_button = Button(
+            text="BACK TO GAMES",
+            font_name=FONT_NAME,
+            font_size=dp(12),
+            size_hint=(None, None),
+            size=(dp(170), dp(42)),
+            pos_hint={"center_x": 0.5, "y": 0.05},
+            background_normal="",
+            background_down="",
+            background_color=(0.25, 0.08, 0.42, 0.9),
+            color=(1, 1, 1, 1),
+        )
+        self.math_back_button.bind(on_press=self.back_to_games)
+        self.math_page.add_widget(self.math_back_button)
+        self.root_layout.add_widget(self.math_page)
+        self.math_page.opacity = 0
+        self.math_page.disabled = True
+
+        # Game state belongs to the Android app; ESP32 only supplies the
+        # shared question, AVA's answer and round correctness.
+        self.game_id = None
+        self.game_round = 0
+        self.game_total_rounds = 5
+        self.game_options = []
+        self.game_ali_score = 0
+        self.game_ava_score = 0
+        self.game_ali_answer = None
+        self.game_ava_answer = None
+        self.game_ali_answered = False
+        self.game_ava_answered = False
+        self.game_last_result_round = 0
+
+        # CONNECT is intentionally above the full-screen finding page so its
+        # touch target cannot be swallowed by the page overlay.
         self.root_layout.add_widget(self.connect_button)
 
         self.ble = AndroidBLE(self.add_log)
@@ -749,6 +869,8 @@ class AvaPetApp(App):
         self.connect_button.disabled = True
         self.games_page.opacity = 0
         self.games_page.disabled = True
+        self.math_page.opacity = 0
+        self.math_page.disabled = True
         self.add_log("STARTING AUTOMATIC AVA SCAN...")
         self.ble.scan()
 
@@ -771,6 +893,8 @@ class AvaPetApp(App):
         self.connect_button.opacity = 0
         self.finding_page.opacity = 0
         self.finding_page.disabled = True
+        self.math_page.opacity = 0
+        self.math_page.disabled = True
         self.games_page.opacity = 1
         self.games_page.disabled = False
         self.games_status.text = "CHOOSE A GAME"
@@ -782,9 +906,193 @@ class AvaPetApp(App):
         if self.ble.write_command(command):
             self.games_status.text = f"LOADED: {game_id}"
             self.add_log(f"GAME COMMAND SENT | {command}")
+            if str(game_id).upper() == "MATH_BATTLE":
+                self.reset_math_state()
+                self.game_id = "MATH_BATTLE"
+                self.games_status.text = "MATH BATTLE READY"
+                self.math_page.opacity = 1
+                self.math_page.disabled = False
+                self.games_page.opacity = 0
+                self.games_page.disabled = True
+                self.math_answer_label.text = "WAITING FOR AVA..."
         else:
             self.games_status.text = "GAME LOAD FAILED"
             self.add_log(f"GAME COMMAND FAILED | {command}")
+
+    def reset_math_state(self):
+        self.game_round = 0
+        self.game_options = []
+        self.game_ali_score = 0
+        self.game_ava_score = 0
+        self.game_ali_answer = None
+        self.game_ava_answer = None
+        self.game_ali_answered = False
+        self.game_ava_answered = False
+        self.game_last_result_round = 0
+        self.math_round_label.text = "ROUND 1 / 5"
+        self.math_score_label.text = "ALI: 0     AVA: 0"
+        self.math_question_label.text = "WAITING FOR QUESTION..."
+        self.math_answer_label.text = ""
+        for button in self.math_option_buttons:
+            button.text = "-"
+            button.disabled = True
+
+    def show_math_question(self, round_number, a, b, operator, options):
+        try:
+            self.game_round = int(round_number)
+            self.game_options = [int(value) for value in options[:4]]
+        except Exception as exc:
+            self.add_log(f"GAME QUESTION PARSE ERROR: {exc}")
+            return
+        if len(self.game_options) != 4:
+            self.add_log("GAME QUESTION ERROR: EXPECTED 4 OPTIONS.")
+            return
+        self.game_ali_answer = None
+        self.game_ava_answer = None
+        self.game_ali_answered = False
+        self.game_ava_answered = False
+        self.math_round_label.text = f"ROUND {self.game_round} / {self.game_total_rounds}"
+        self.math_question_label.text = f"{a} {operator} {b} = ?"
+        self.math_answer_label.text = "CHOOSE YOUR ANSWER"
+        for idx, button in enumerate(self.math_option_buttons):
+            button.text = str(self.game_options[idx])
+            button.disabled = False
+        self.add_log(
+            f"MATH QUESTION | ROUND={self.game_round} | {a} {operator} {b} | OPTIONS={self.game_options}"
+        )
+
+    def select_math_answer(self, index):
+        if self.game_ali_answered:
+            return
+        if index < 0 or index >= len(self.game_options):
+            return
+        answer = self.game_options[index]
+        self.game_ali_answer = answer
+        self.game_ali_answered = True
+        for button in self.math_option_buttons:
+            button.disabled = True
+        self.math_answer_label.text = f"ALI ANSWER: {answer} | WAITING FOR AVA..."
+        command = f"GAME_ANSWER|ALI|{answer}"
+        self.add_log(f"MATH ANSWER -> {command}")
+        if not self.ble.write_data(command):
+            self.game_ali_answered = False
+            self.math_answer_label.text = "ANSWER SEND FAILED"
+            for button in self.math_option_buttons:
+                button.disabled = False
+
+    def handle_game_data(self, text):
+        text = str(text).strip()
+        if not text or text == "<binary>":
+            return
+        self.add_log(f"GAME DATA <- {text}")
+        parts = text.split("|")
+        message = parts[0].strip().upper() if parts else ""
+        try:
+            if message == "GAME_QUESTION":
+                if len(parts) < 9:
+                    self.add_log("GAME QUESTION ERROR: INVALID FIELD COUNT.")
+                    return
+                self.show_math_question(parts[1], parts[2], parts[3], parts[4], parts[5:9])
+                return
+
+            if message == "GAME_ANSWER":
+                if len(parts) < 3:
+                    return
+                player = parts[1].strip().upper()
+                answer = int(parts[2])
+                if player == "AVA":
+                    self.game_ava_answer = answer
+                    self.game_ava_answered = True
+                    if self.game_ali_answered:
+                        self.math_answer_label.text = f"ALI: {self.game_ali_answer} | AVA: {answer} | CHECKING..."
+                    else:
+                        self.math_answer_label.text = f"AVA ANSWERED: {answer}"
+                elif player == "ALI":
+                    self.game_ali_answer = answer
+                    self.game_ali_answered = True
+                return
+
+            if message == "GAME_RESULT":
+                if len(parts) < 6:
+                    self.add_log("GAME RESULT ERROR: INVALID FIELD COUNT.")
+                    return
+                round_number = int(parts[1])
+                ali_answer = int(parts[2])
+                ava_answer = int(parts[3])
+                ali_correct = bool(int(parts[4]))
+                ava_correct = bool(int(parts[5]))
+                self.apply_math_result(round_number, ali_answer, ava_answer, ali_correct, ava_correct)
+                return
+
+            if message == "GAME_SCORE":
+                if len(parts) >= 3:
+                    self.add_log(f"GAME SCORE DEBUG <- ALI={parts[1]} AVA={parts[2]}")
+                return
+
+            if message == "GAME_FINISHED":
+                winner = parts[1] if len(parts) > 1 else "DRAW"
+                self.show_math_finished(winner)
+                return
+        except Exception as exc:
+            self.add_log(f"GAME DATA PARSE ERROR: {exc} | {text}")
+
+    def apply_math_result(self, round_number, ali_answer, ava_answer, ali_correct, ava_correct):
+        if round_number == self.game_last_result_round:
+            return
+        self.game_last_result_round = round_number
+        self.game_ali_answer = ali_answer
+        self.game_ava_answer = ava_answer
+        self.game_ali_answered = True
+        self.game_ava_answered = True
+
+        # APP IS THE SCORE AUTHORITY. A point is awarded only when exactly
+        # one player is correct. If both are correct, or both are wrong,
+        # the round is a draw/nobody and no point is awarded.
+        if ali_correct and not ava_correct:
+            self.game_ali_score += 1
+            result = "ALI WINS ROUND"
+        elif ava_correct and not ali_correct:
+            self.game_ava_score += 1
+            result = "AVA WINS ROUND"
+        elif ali_correct and ava_correct:
+            result = "ROUND DRAW"
+        else:
+            result = "NOBODY GETS A POINT"
+
+        self.math_score_label.text = f"ALI: {self.game_ali_score}     AVA: {self.game_ava_score}"
+        self.math_answer_label.text = (
+            f"ALI: {ali_answer} {'✓' if ali_correct else '✗'}    "
+            f"AVA: {ava_answer} {'✓' if ava_correct else '✗'}\n{result}"
+        )
+        self.add_log(
+            f"MATH RESULT | ROUND={round_number} | ALI={ali_answer}/{int(ali_correct)} | "
+            f"AVA={ava_answer}/{int(ava_correct)} | SCORE={self.game_ali_score}:{self.game_ava_score}"
+        )
+
+    def show_math_finished(self, winner):
+        winner_text = str(winner).strip().upper()
+        if winner_text in ("ALI", "ALI_WINS"):
+            final = "ALI WINS!"
+        elif winner_text in ("AVA", "AVA_WINS"):
+            final = "AVA WINS!"
+        else:
+            final = "DRAW!"
+        self.math_answer_label.text = (
+            f"{final}\nFINAL SCORE  ALI: {self.game_ali_score}  AVA: {self.game_ava_score}"
+        )
+        for button in self.math_option_buttons:
+            button.disabled = True
+        self.add_log(
+            f"MATH FINISHED | WINNER={winner_text} | APP SCORE={self.game_ali_score}:{self.game_ava_score}"
+        )
+
+    def back_to_games(self, *_):
+        self.math_page.opacity = 0
+        self.math_page.disabled = True
+        self.games_page.opacity = 1
+        self.games_page.disabled = False
+        self.games_status.text = "CHOOSE A GAME"
+        self.ble.write_command("GAME_END")
 
     def add_log(self, message):
         upper = str(message).upper()
@@ -808,6 +1116,8 @@ class AvaPetApp(App):
             self.finding_page.disabled = False
             self.games_page.opacity = 0
             self.games_page.disabled = True
+            self.math_page.opacity = 0
+            self.math_page.disabled = True
             self.finding_label.text = "Finding AVA"
             self.connect_button.disabled = False
             self.ava_name_label.opacity = 0
