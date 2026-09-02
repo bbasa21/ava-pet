@@ -1,10 +1,13 @@
 package org.ava.avapet;
 
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.util.Base64;
+
+import org.kivy.android.PythonActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,22 +38,45 @@ public final class AvaGattCallback extends BluetoothGattCallback {
             return;
         }
 
-        // Android BLE can occasionally return a transient GATT error (most
-        // notably 133) immediately after discovery. Retry the same GATT
-        // connection a couple of times before reporting the disconnect.
-        if (newState == BluetoothGatt.STATE_DISCONNECTED && status != BluetoothGatt.GATT_SUCCESS && reconnectAttempts < 2) {
+        // Android BLE can occasionally report a transient GATT error (most
+        // notably 133). Recreate the GATT connection explicitly over LE
+        // instead of retrying the same failed transport session.
+        if (newState == BluetoothGatt.STATE_DISCONNECTED
+                && status != BluetoothGatt.GATT_SUCCESS
+                && reconnectAttempts < 2) {
             reconnectAttempts++;
-            final BluetoothGatt retryGatt = gatt;
+
+            final BluetoothGatt failedGatt = gatt;
+            final BluetoothDevice device = gatt == null ? null : gatt.getDevice();
+            final int attempt = reconnectAttempts;
+
             new Thread(() -> {
                 try {
                     Thread.sleep(600L);
-                    if (retryGatt != null) {
-                        retryGatt.connect();
+
+                    if (failedGatt != null) {
+                        try {
+                            failedGatt.close();
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    if (device != null && PythonActivity.mActivity != null) {
+                        BluetoothGatt retryGatt = device.connectGatt(
+                                PythonActivity.mActivity,
+                                false,
+                                this,
+                                BluetoothDevice.TRANSPORT_LE
+                        );
+                        synchronized (AvaGattCallback.this) {
+                            currentGatt = retryGatt;
+                        }
                     }
                 } catch (Exception ignored) {
                 }
             }).start();
-            push("RETRY|" + status + "|" + reconnectAttempts);
+
+            push("RETRY|" + status + "|" + attempt);
             return;
         }
 
