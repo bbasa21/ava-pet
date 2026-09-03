@@ -19,10 +19,12 @@ public final class AvaGattCallback extends BluetoothGattCallback {
     private static final UUID EVENT_UUID = UUID.fromString("7b7a0003-6a76-4156-9a76-415641000001");
     private static final UUID DATA_UUID = UUID.fromString("7b7a0005-6a76-4156-9a76-415641000001");
     private static final UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+    private static final int REQUESTED_MTU = 247;
 
     private final List<String> events = new ArrayList<>();
     private BluetoothGatt currentGatt;
     private int reconnectAttempts = 0;
+    private boolean mtuRequested = false;
 
     private synchronized void push(String event) { events.add(event); }
 
@@ -40,7 +42,26 @@ public final class AvaGattCallback extends BluetoothGattCallback {
 
         if (newState == BluetoothGatt.STATE_CONNECTED) {
             reconnectAttempts = 0;
+            mtuRequested = false;
             push("STATE|" + status + "|" + newState);
+
+            // Android ATT defaults to a 23-byte MTU, which leaves only 20
+            // bytes for an attribute value. AVA commands can exceed 20 bytes
+            // (for example GAME_LOAD|MATH_BATTLE is 21 bytes), so negotiate a
+            // larger MTU before service discovery and before Python can mark
+            // the GATT connection ready for writes.
+            try {
+                if (gatt != null && gatt.requestMtu(REQUESTED_MTU)) {
+                    mtuRequested = true;
+                    push("MTU_REQUESTED|" + REQUESTED_MTU);
+                    return;
+                }
+            } catch (Exception ignored) {
+            }
+
+            // If MTU negotiation cannot be requested, keep the connection
+            // usable and continue with the existing discovery flow.
+            discoverServices(gatt);
             return;
         }
 
@@ -87,6 +108,30 @@ public final class AvaGattCallback extends BluetoothGattCallback {
         }
 
         push("STATE|" + status + "|" + newState);
+    }
+
+    @Override
+    public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+        currentGatt = gatt;
+        mtuRequested = false;
+        push("MTU|" + mtu + "|" + status);
+
+        // Service discovery happens only after the MTU exchange completes.
+        // This guarantees that Python cannot become GATT-ready and send a
+        // command while Android is still using the default 20-byte payload.
+        discoverServices(gatt);
+    }
+
+    private void discoverServices(BluetoothGatt gatt) {
+        try {
+            if (gatt != null && gatt.discoverServices()) {
+                push("SERVICES_REQUESTED");
+            } else {
+                push("SERVICES_REQUEST_FAILED");
+            }
+        } catch (Exception ignored) {
+            push("SERVICES_REQUEST_FAILED");
+        }
     }
 
     @Override
