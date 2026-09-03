@@ -1245,6 +1245,10 @@ class AndroidBLE:
     # PROCESS COMMAND QUEUE
     # --------------------------------------------------------
 
+    # --------------------------------------------------------
+    # PROCESS COMMAND QUEUE
+    # --------------------------------------------------------
+
     def _process_command_queue(self):
 
         if (
@@ -1269,9 +1273,40 @@ class AndroidBLE:
 
         try:
 
-            self.command_characteristic.setValue(
-                command.encode("utf-8")
+            payload = command.encode("utf-8")
+
+            self.log(
+                f"BLE DEBUG PREP | "
+                f"TEXT={command!r} | "
+                f"LEN={len(payload)} | "
+                f"HEX={payload.hex()}"
             )
+
+            self.command_characteristic.setValue(
+                payload
+            )
+
+            try:
+
+                stored = (
+                    self.command_characteristic.getValue()
+                )
+
+                stored_bytes = bytes(
+                    stored
+                )
+
+                self.log(
+                    f"BLE DEBUG STORED | "
+                    f"LEN={len(stored_bytes)} | "
+                    f"HEX={stored_bytes.hex()}"
+                )
+
+            except Exception as exc:
+
+                self.log(
+                    f"BLE DEBUG STORED ERROR: {exc}"
+                )
 
             Characteristic = autoclass(
                 "android.bluetooth.BluetoothGattCharacteristic"
@@ -1347,7 +1382,7 @@ class AndroidBLE:
                 self._process_command_queue(),
                 0.05,
             )
-
+           
     # --------------------------------------------------------
     # RELEASE COMMAND
     # --------------------------------------------------------
