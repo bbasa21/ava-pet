@@ -900,6 +900,7 @@ class AvaPetApp(App):
         self.games_status.text = "CHOOSE A GAME"
 
     def select_game(self, game_id):
+        self.add_log(f"!!! GAME BUTTON PRESSED: {game_id} !!!")
         command = game_load_command(game_id)
         self.games_status.text = f"LOADING {game_id}"
         self.add_log(f"GAME LOAD -> {game_id}")
