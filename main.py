@@ -13,6 +13,7 @@ from kivy.uix.image import Image
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.core.window import Window
 from jnius import autoclass, PythonJavaClass, java_method
 
 from ava_games import AVAILABLE_GAMES, game_load_command
@@ -1596,6 +1597,34 @@ class AndroidBLE:
 
 class AvaPetApp(App):
 
+    def _window_game_touch_down(self, window, touch):
+        if self.games_page.disabled or self.games_page.opacity <= 0:
+            return False
+
+        if self._game_touch_lock:
+            return False
+
+        for game_id, button in self.game_buttons.items():
+            if button.disabled:
+                continue
+
+            # تبدیل مختصات لمس پنجره به مختصات خود Button
+            local_pos = button.to_widget(*touch.pos)
+
+            if button.collide_point(*local_pos):
+                self._game_touch_lock = True
+
+                self.add_log(f"GAME TOUCH WINDOW | {game_id}")
+                self.game_button_pressed(game_id)
+
+                Clock.schedule_once(
+                    self._release_game_touch_lock,
+                    0.25,
+                )
+
+                return True
+
+        return False
     # ========================================================
     # BUILD
     # ========================================================
@@ -2077,6 +2106,7 @@ class AvaPetApp(App):
 
         # Prevent duplicate fallback touch activation.
         self._game_touch_lock = False
+        Window.bind(on_touch_down=self._window_game_touch_down)
 
         # ====================================================
         # CONNECT BUTTON ABOVE FINDING PAGE
