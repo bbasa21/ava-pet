@@ -916,7 +916,7 @@ class AndroidBLE:
 
                 Clock.schedule_once(
                     lambda *_:
-                    self.handle_game_data(text),
+                    App.get_running_app().handle_game_data(text),
                     0,
                 )
 
@@ -3241,4 +3241,3 @@ class AvaPetApp(App):
 if __name__ == "__main__":
 
     AvaPetApp().run()
-
