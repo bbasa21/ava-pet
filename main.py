@@ -2924,17 +2924,56 @@ class AvaPetApp(App):
                 return
 
             # ------------------------------------------------
-            # SCORE DEBUG
+            # SCORE
             # ------------------------------------------------
 
             if message == "GAME_SCORE":
 
-                if len(parts) >= 3:
+                if len(parts) < 3:
 
                     self.add_log(
-                        f"GAME SCORE DEBUG <- "
-                        f"ALI={parts[1]} "
-                        f"AVA={parts[2]}"
+                        "GAME SCORE ERROR: "
+                        "INVALID FIELD COUNT."
+                    )
+
+                    return
+
+                try:
+
+                    ali_score = int(
+                        parts[1]
+                    )
+
+                    ava_score = int(
+                        parts[2]
+                    )
+
+                    # ESP32 IS THE SOLE SCORE AUTHORITY.
+                    # Android only displays the score
+                    # received from ESP32.
+
+                    self.game_ali_score = ali_score
+                    self.game_ava_score = ava_score
+
+                    self.math_score_label.text = (
+                        f"ALI: "
+                        f"{self.game_ali_score}"
+                        f"     "
+                        f"AVA: "
+                        f"{self.game_ava_score}"
+                    )
+
+                    self.add_log(
+                        f"GAME SCORE <- "
+                        f"ALI={self.game_ali_score} "
+                        f"AVA={self.game_ava_score}"
+                    )
+
+                except Exception as exc:
+
+                    self.add_log(
+                        f"GAME SCORE PARSE ERROR: "
+                        f"{exc} | {text}"
                     )
 
                 return
@@ -2967,7 +3006,6 @@ class AvaPetApp(App):
     # ========================================================
     # APPLY RESULT
     # ========================================================
-
     def apply_math_result(
         self,
         round_number,
