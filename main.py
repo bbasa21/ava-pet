@@ -1987,7 +1987,7 @@ class AvaPetApp(App):
         )
 
         self.settings_back_button.bind(
-        self.show_ava_home
+        on_release=self.show_ava_home
         )
 
         # ----------------------------------------------------
