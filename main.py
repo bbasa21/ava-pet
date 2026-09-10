@@ -4218,6 +4218,9 @@ class AvaPetApp(App):
 
         self.home_page.opacity = 1
         self.home_page.disabled = False
+        
+        self.home_games_button.disabled = False
+        self.home_settings_button.disabled = False
 
     # ========================================================
     # LOG / UI STATE
