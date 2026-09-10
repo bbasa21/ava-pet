@@ -1870,11 +1870,11 @@ class AvaPetApp(App):
         self.home_page.opacity = 0
         self.home_page.disabled = True
         
-                # ====================================================
+        # ====================================================
         # SETTINGS PAGE
         # ====================================================
 
-        self.settings_page = FloatLayout  (
+        self.settings_page = FloatLayout(
             size_hint=(1, 1)
         )
 
@@ -2637,6 +2637,10 @@ class AvaPetApp(App):
         # ====================================================
         # CONNECT BUTTON ABOVE FINDING PAGE
         # ====================================================
+
+        self.root_layout.add_widget(
+            self.connect_button
+        )
 
         # ====================================================
         # BLE
@@ -4196,6 +4200,10 @@ class AvaPetApp(App):
     # ====================================================
 
     def show_ava_home(self):
+
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+        
         self.finding_page.opacity = 0
         self.finding_page.disabled = True
 
