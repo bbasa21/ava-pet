@@ -4221,10 +4221,16 @@ class AvaPetApp(App):
         
         self.home_games_button.disabled = False
         self.home_settings_button.disabled = False
-
+        
+        self.home_games_button.bind(
+        on_release=lambda *_: print("🔥 HOME GAMES TOUCH FIRED")
+        )
+        self.home_settings_button.bind( 
+        on_release=lambda *_: print("🔥 HOME SETTINGS TOUCH FIRED")
+        )
     # ========================================================
-    # LOG / UI STATE
-    # ========================================================
+     # LOG / UI STATE
+     # ========================================================
 
     def add_log(self, message):
 
