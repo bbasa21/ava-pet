@@ -1874,7 +1874,7 @@ class AvaPetApp(App):
         # SETTINGS PAGE
         # ====================================================
 
-        self.settings_page = FloatLayout(
+        self.settings_page = FloatLayout  (
             size_hint=(1, 1)
         )
 
@@ -2637,10 +2637,6 @@ class AvaPetApp(App):
         # ====================================================
         # CONNECT BUTTON ABOVE FINDING PAGE
         # ====================================================
-
-        self.root_layout.add_widget(
-            self.connect_button
-        )
 
         # ====================================================
         # BLE
