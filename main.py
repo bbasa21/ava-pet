@@ -1754,7 +1754,7 @@ class AvaPetApp(App):
         )
 
         self.connect_button.bind(
-            on_press=self.connect_ava
+        on_release=self.connect_ava
         )
 
         self.ava_name_label.opacity = 0
@@ -2839,7 +2839,7 @@ class AvaPetApp(App):
     # SHOW MY GAMES
     # ========================================================
 
-    def show_my_games(self):
+    def show_my_games(self, *_):
 
         self.connect_button.disabled = True
         self.connect_button.opacity = 0
