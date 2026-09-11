@@ -4235,6 +4235,9 @@ class AvaPetApp(App):
         
         self.home_games_button.disabled = False
         self.home_settings_button.disabled = False
+        
+        self.root_layout.remove_widget(self.home_page)
+        self.root_layout.add_widget(self.home_page)
 
     # ========================================================
      # LOG / UI STATE
