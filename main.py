@@ -2632,7 +2632,6 @@ class AvaPetApp(App):
 
         # Prevent duplicate fallback touch activation.
         self._game_touch_lock = False
-        Window.bind(on_touch_down=self._window_game_touch_down)
 
         # ====================================================
         # CONNECT BUTTON ABOVE FINDING PAGE
@@ -4185,7 +4184,7 @@ class AvaPetApp(App):
     # SETTINGS PAGE
     # ====================================================
 
-    def show_settings(self):
+    def show_settings(self, *_):
         self.connect_button.opacity = 0
         self.connect_button.disabled = True
         
