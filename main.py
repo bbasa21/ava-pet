@@ -1764,6 +1764,242 @@ class AvaPetApp(App):
         self.root_layout.add_widget(
             self.finding_page
         )
+        # ====================================================
+        # AVA HOME PAGE
+        # ====================================================
+
+        self.home_page = FloatLayout(
+            size_hint=(1, 1)
+        )
+
+
+        # ----------------------------------------------------
+        # AVA HOME TITLE
+        # ----------------------------------------------------
+
+        self.home_title = Label(
+            text="AVA HOME",
+            font_name=FONT_NAME,
+            font_size=dp(28),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(60),
+            pos_hint={
+                "center_x": 0.5,
+                "top": 0.88,
+            },
+        )
+
+        self.home_page.add_widget(
+            self.home_title
+        )
+
+
+        # ----------------------------------------------------
+        # MY GAMES
+        # ----------------------------------------------------
+
+        self.home_games_button = Button(
+            text="MY GAMES",
+            font_name=FONT_NAME,
+            font_size=dp(17),
+            size_hint=(None, None),
+            size=(dp(210), dp(60)),
+            pos_hint={
+                "center_x": 0.5,
+                "center_y": 0.56,
+            },
+            background_normal="",
+            background_down="",
+            background_color=(
+                0.45,
+                0.12,
+                0.75,
+                0.9,
+            ),
+            color=(1, 1, 1, 1),
+        )
+
+        self.home_page.add_widget(
+            self.home_games_button
+        )
+        self.home_games_button.bind(
+            on_release=self.show_my_games
+        )
+
+        # ----------------------------------------------------
+        # SETTINGS
+        # ----------------------------------------------------
+
+        self.home_settings_button = Button(
+            text="SETTINGS",
+            font_name=FONT_NAME,
+            font_size=dp(17),
+            size_hint=(None, None),
+            size=(dp(210), dp(60)),
+            pos_hint={
+                "center_x": 0.5,
+                "center_y": 0.40,
+            },
+            background_normal="",
+            background_down="",
+            background_color=(
+                0.25,
+                0.08,
+                0.42,
+                0.9,
+            ),
+            color=(1, 1, 1, 1),
+        )
+
+        self.home_page.add_widget(
+            self.home_settings_button
+        )
+        self.home_settings_button.bind(
+        on_release=self.show_settings
+        )
+
+        # ----------------------------------------------------
+        # ADD HOME PAGE
+        # ----------------------------------------------------
+
+        self.root_layout.add_widget(
+            self.home_page
+        )
+
+        self.home_page.opacity = 0
+        self.home_page.disabled = True
+        
+        # ====================================================
+        # SETTINGS PAGE
+        # ====================================================
+
+        self.settings_page = FloatLayout(
+            size_hint=(1, 1)
+        )
+
+
+        # ----------------------------------------------------
+        # SETTINGS TITLE
+        # ----------------------------------------------------
+
+        self.settings_title = Label(
+            text="SETTINGS",
+            font_name=FONT_NAME,
+            font_size=dp(28),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(60),
+            pos_hint={
+                "center_x": 0.5,
+                "top": 0.88,
+            },
+        )
+
+        self.settings_page.add_widget(
+            self.settings_title
+        )
+
+
+        # ----------------------------------------------------
+        # SETTINGS BUTTONS
+        # ----------------------------------------------------
+
+        settings_items = [
+            "VOICE",
+            "VOLUME",
+            "VOICE SETTINGS",
+            "EMOTION SETTINGS",
+            "EYE SETTINGS",
+            "CLOCK / RTC",
+            "AVA PERSONALITY",
+            "BATTERY",
+            "SLEEP SETTINGS",
+        ]
+
+
+        self.settings_buttons = []
+
+
+        for index, title in enumerate(
+            settings_items
+        ):
+
+            button = Button(
+                text=title,
+                font_name=FONT_NAME,
+                font_size=dp(14),
+                size_hint=(None, None),
+                size=(dp(250), dp(45)),
+                pos_hint={
+                    "center_x": 0.5,
+                    "top": 0.76 - (
+                        index * 0.075
+                    ),
+                },
+                background_normal="",
+                background_down="",
+                background_color=(
+                    0.25,
+                    0.08,
+                    0.42,
+                    0.9,
+                ),
+                color=(1, 1, 1, 1),
+            )
+
+            self.settings_buttons.append(
+                button
+            )
+
+            self.settings_page.add_widget(
+                button
+            )
+
+
+        # ----------------------------------------------------
+        # BACK TO HOME
+        # ----------------------------------------------------
+
+        self.settings_back_button = Button(
+            text="BACK",
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            size_hint=(None, None),
+            size=(dp(150), dp(45)),
+            pos_hint={
+                "center_x": 0.5,
+                "y": 0.03,
+            },
+            background_normal="",
+            background_down="",
+            background_color=(
+                0.15,
+                0.15,
+                0.18,
+                0.9,
+            ),
+            color=(1, 1, 1, 1),
+        )
+
+        self.settings_page.add_widget(
+            self.settings_back_button
+        )
+
+        self.settings_back_button.bind(
+        on_release=self.show_ava_home
+        )
+
+        # ----------------------------------------------------
+        # ADD SETTINGS PAGE
+        # ----------------------------------------------------
+
+        self.root_layout.add_widget(
+            self.settings_page
+        )
+
+        self.settings_page.opacity = 0
+        self.settings_page.disabled = True
 
         # ====================================================
         # MY GAMES PAGE
@@ -1891,6 +2127,38 @@ class AvaPetApp(App):
 
         self.games_page.add_widget(
             self.games_scroll
+        )
+        # ----------------------------------------------------
+        # BACK TO HOME
+        # ----------------------------------------------------
+
+        self.games_back_button = Button(
+            text="BACK TO HOME",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            size_hint=(None, None),
+            size=(dp(180), dp(42)),
+            pos_hint={
+                "center_x": 0.5,
+                "y": 0.015,
+            },
+            background_normal="",
+            background_down="",
+            background_color=(
+                0.15,
+                0.15,
+                0.18,
+                0.9,
+            ),
+            color=(1, 1, 1, 1),
+        )
+
+        self.games_page.add_widget(
+            self.games_back_button
+        )
+
+        self.games_back_button.bind(
+            on_release=self.show_ava_home
         )
 
         self.root_layout.add_widget(
@@ -2116,6 +2384,229 @@ class AvaPetApp(App):
 
         self.math_page.opacity = 0
         self.math_page.disabled = True
+        
+        
+        # ====================================================
+        # LOGIC BATTLE PAGE
+        # ====================================================
+
+        self.logic_page = FloatLayout(
+            size_hint=(1, 1)
+        )
+
+        self.logic_title = Label(
+            text="LOGIC BATTLE",
+            font_name=FONT_NAME,
+            font_size=dp(25),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(55),
+            pos_hint={
+                "center_x": 0.5,
+                "top": 0.94,
+            },
+        )
+
+        self.logic_page.add_widget(
+            self.logic_title
+        )
+
+        self.logic_round_label = Label(
+            text="ROUND 1 / 5",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(35),
+            pos_hint={
+                "center_x": 0.5,
+                "top": 0.84,
+            },
+        )
+
+        self.logic_page.add_widget(
+            self.logic_round_label
+        )
+
+        self.logic_score_label = Label(
+            text="ALI: 0     AVA: 0",
+            font_name=FONT_NAME,
+            font_size=dp(15),
+            color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=dp(40),
+            pos_hint={
+                "center_x": 0.5,
+                "top": 0.78,
+            },
+        )
+
+        self.logic_page.add_widget(
+            self.logic_score_label
+        )
+
+        # ----------------------------------------------------
+        # LOGIC QUESTION
+        # ----------------------------------------------------
+
+        self.logic_question_label = Label(
+            text="WAITING FOR QUESTION...",
+            font_name=FONT_NAME,
+            font_size=dp(20),
+            color=(1, 1, 1, 1),
+            size_hint=(0.92, None),
+            height=dp(80),
+            pos_hint={
+                "center_x": 0.5,
+                "top": 0.69,
+            },
+            halign="center",
+            valign="middle",
+        )
+
+        self.logic_question_label.bind(
+            size=lambda inst, val:
+            setattr(
+                inst,
+                "text_size",
+                val,
+            )
+        )
+
+        self.logic_page.add_widget(
+            self.logic_question_label
+        )
+
+        # ----------------------------------------------------
+        # LOGIC OPTIONS
+        # ----------------------------------------------------
+
+        self.logic_options_grid = GridLayout(
+            cols=2,
+            rows=2,
+            spacing=dp(12),
+            padding=[
+                dp(12),
+                dp(8),
+            ],
+            size_hint=(0.88, None),
+            height=dp(150),
+            pos_hint={
+                "center_x": 0.5,
+                "center_y": 0.39,
+            },
+        )
+
+        self.logic_option_buttons = []
+
+        for index in range(4):
+
+            button = Button(
+                text="-",
+                font_name=FONT_NAME,
+                font_size=dp(17),
+                background_normal="",
+                background_down="",
+                background_color=(
+                    0.45,
+                    0.12,
+                    0.75,
+                    0.9,
+                ),
+                color=(1, 1, 1, 1),
+            )
+
+            button.bind(
+                on_press=
+                lambda _,
+                idx=index:
+                self.select_logic_answer(idx)
+            )
+
+            self.logic_option_buttons.append(
+                button
+            )
+
+            self.logic_options_grid.add_widget(
+                button
+            )
+
+        self.logic_page.add_widget(
+            self.logic_options_grid
+        )
+
+        # ----------------------------------------------------
+        # LOGIC ANSWER STATUS
+        # ----------------------------------------------------
+
+        self.logic_answer_label = Label(
+            text="",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            color=(1, 1, 1, 1),
+            size_hint=(0.94, None),
+            height=dp(55),
+            pos_hint={
+                "center_x": 0.5,
+                "y": 0.16,
+            },
+            halign="center",
+            valign="middle",
+        )
+
+        self.logic_answer_label.bind(
+            size=lambda inst, val:
+            setattr(
+                inst,
+                "text_size",
+                val,
+            )
+        )
+
+        self.logic_page.add_widget(
+            self.logic_answer_label
+        )
+
+        # ----------------------------------------------------
+        # BACK
+        # ----------------------------------------------------
+
+        self.logic_back_button = Button(
+            text="BACK TO GAMES",
+            font_name=FONT_NAME,
+            font_size=dp(12),
+            size_hint=(None, None),
+            size=(dp(170), dp(42)),
+            pos_hint={
+                "center_x": 0.5,
+                "y": 0.05,
+            },
+            background_normal="",
+            background_down="",
+            background_color=(
+                0.25,
+                0.08,
+                0.42,
+                0.9,
+            ),
+            color=(1, 1, 1, 1),
+        )
+
+        self.logic_back_button.bind(
+            on_press=self.back_to_games
+        )
+
+        self.logic_page.add_widget(
+            self.logic_back_button
+        )
+
+        self.root_layout.add_widget(
+            self.logic_page
+        )
+
+        self.logic_page.opacity = 0
+        self.logic_page.disabled = True
+
 
         # ====================================================
         # GAME STATE
@@ -2281,11 +2772,19 @@ class AvaPetApp(App):
         self.connect_button.opacity = 0
         self.connect_button.disabled = True
 
+        self.home_page.opacity = 0
+        self.home_page.disabled = True
+
+        self.settings_page.opacity = 0
+        self.settings_page.disabled = True
+        
         self.games_page.opacity = 0
         self.games_page.disabled = True
 
         self.math_page.opacity = 0
         self.math_page.disabled = True
+        self.logic_page.opacity = 0
+        self.logic_page.disabled = True
 
         self.add_log(
             "STARTING AUTOMATIC AVA SCAN..."
@@ -2347,9 +2846,17 @@ class AvaPetApp(App):
 
         self.finding_page.opacity = 0
         self.finding_page.disabled = True
+        
+        self.home_page.opacity = 0
+        self.home_page.disabled = True
 
         self.math_page.opacity = 0
         self.math_page.disabled = True
+        self.logic_page.opacity = 0
+        self.logic_page.disabled = True
+        
+        self.settings_page.opacity = 0
+        self.settings_page.disabled = True
 
         self.games_page.opacity = 1
         self.games_page.disabled = False
@@ -2578,6 +3085,53 @@ class AvaPetApp(App):
                     self.math_answer_label.text = (
                         "GAME START FAILED"
                     )
+                    
+            elif game_id == "LOGIC_BATTLE":
+
+                self.reset_logic_state()
+
+                self.game_id = (
+                    "LOGIC_BATTLE"
+                )
+
+                self.games_status.text = (
+                    "LOGIC BATTLE STARTING"
+                )
+
+                self.logic_page.opacity = 1
+                self.logic_page.disabled = False
+
+                self.games_page.opacity = 0
+                self.games_page.disabled = True
+
+                self.logic_answer_label.text = (
+                    "STARTING GAME..."
+                )
+
+                # GAME_LOAD loads the game.
+                # GAME_START generates round 1.
+                if self.ble.write_command(
+                    "GAME_START"
+                ):
+
+                    self.add_log(
+                        "GAME START -> LOGIC_BATTLE"
+                    )
+
+                else:
+
+                    self.add_log(
+                        "GAME START QUEUE FAILED"
+                    )
+
+                    self.games_status.text = (
+                        "GAME START FAILED"
+                    )
+
+                    self.logic_answer_label.text = (
+                        "GAME START FAILED"
+                    )
+
 
         else:
 
@@ -2630,10 +3184,52 @@ class AvaPetApp(App):
 
             button.text = "-"
             button.disabled = True
+    # ========================================================
+    # RESET LOGIC
+    # ========================================================
+
+    def reset_logic_state(self):
+
+        self.game_round = 0
+
+        self.game_options = []
+
+        self.game_ali_score = 0
+        self.game_ava_score = 0
+
+        self.game_ali_answer = None
+        self.game_ava_answer = None
+
+        self.game_ali_answered = False
+        self.game_ava_answered = False
+
+        self.game_last_result_round = 0
+
+        self.logic_round_label.text = (
+            "ROUND 1 / 5"
+        )
+
+        self.logic_score_label.text = (
+            "ALI: 0     AVA: 0"
+        )
+
+        self.logic_question_label.text = (
+            "WAITING FOR QUESTION..."
+        )
+
+        self.logic_answer_label.text = ""
+
+        for button in (
+            self.logic_option_buttons
+        ):
+
+            button.text = "-"
+            button.disabled = True
 
     # ========================================================
     # SHOW MATH QUESTION
     # ========================================================
+
 
     def show_math_question(
         self,
@@ -2709,6 +3305,82 @@ class AvaPetApp(App):
             f"{a} {operator} {b} | "
             f"OPTIONS={self.game_options}"
         )
+    # ========================================================
+    # SHOW LOGIC QUESTION
+    # ========================================================
+
+    def show_logic_question(
+        self,
+        round_number,
+        question_text,
+        options,
+    ):
+
+        try:
+
+            self.game_round = int(
+                round_number
+            )
+
+            self.game_options = [
+                str(value)
+                for value in options[:4]
+            ]
+
+        except Exception as exc:
+
+            self.add_log(
+                f"LOGIC QUESTION PARSE ERROR: {exc}"
+            )
+
+            return
+
+        if len(
+            self.game_options
+        ) != 4:
+
+            self.add_log(
+                "LOGIC QUESTION ERROR: "
+                "EXPECTED 4 OPTIONS."
+            )
+
+            return
+
+        self.game_ali_answer = None
+        self.game_ava_answer = None
+
+        self.game_ali_answered = False
+        self.game_ava_answered = False
+
+        self.logic_round_label.text = (
+            f"ROUND {self.game_round} / "
+            f"{self.game_total_rounds}"
+        )
+
+        self.logic_question_label.text = (
+            str(question_text)
+        )
+
+        self.logic_answer_label.text = (
+            "CHOOSE YOUR ANSWER"
+        )
+
+        for idx, button in enumerate(
+            self.logic_option_buttons
+        ):
+
+            button.text = (
+                self.game_options[idx]
+            )
+
+            button.disabled = False
+
+        self.add_log(
+            f"LOGIC QUESTION | "
+            f"ROUND={self.game_round} | "
+            f"QUESTION={question_text} | "
+            f"OPTIONS={self.game_options}"
+        )
 
     # ========================================================
     # MATH ANSWER
@@ -2772,6 +3444,69 @@ class AvaPetApp(App):
             ):
 
                 button.disabled = False
+                
+    # ========================================================
+    # LOGIC ANSWER
+    # ========================================================
+
+    def select_logic_answer(
+        self,
+        index,
+    ):
+
+        if self.game_ali_answered:
+            return
+
+        if (
+            index < 0
+            or index >= len(
+                self.game_options
+            )
+        ):
+
+            return
+
+        answer = (
+            self.game_options[index]
+        )
+
+        self.game_ali_answer = answer
+        self.game_ali_answered = True
+
+        for button in (
+            self.logic_option_buttons
+        ):
+
+            button.disabled = True
+
+        self.logic_answer_label.text = (
+            f"ALI ANSWER: {answer} | "
+            f"WAITING FOR AVA..."
+        )
+
+        command = (
+            f"GAME_ANSWER|ALI|{answer}"
+        )
+
+        self.add_log(
+            f"LOGIC ANSWER -> {command}"
+        )
+
+        if not self.ble.write_data(
+            command
+        ):
+
+            self.game_ali_answered = False
+
+            self.logic_answer_label.text = (
+                "ANSWER SEND FAILED"
+            )
+
+            for button in (
+                self.logic_option_buttons
+            ):
+
+                button.disabled = False
 
     # ========================================================
     # GAME DATA
@@ -2813,6 +3548,34 @@ class AvaPetApp(App):
 
             if message == "GAME_QUESTION":
 
+                # ------------------------------------------------
+                # LOGIC BATTLE
+                # ------------------------------------------------
+
+                if self.game_id == "LOGIC_BATTLE":
+
+                    if len(parts) < 7:
+
+                        self.add_log(
+                            "LOGIC GAME QUESTION ERROR: "
+                            "INVALID FIELD COUNT."
+                        )
+
+                        return
+
+                    self.show_logic_question(
+                        parts[1],
+                        parts[2],
+                        parts[3:7],
+                    )
+
+                    return
+
+
+                # ------------------------------------------------
+                # MATH BATTLE
+                # ------------------------------------------------
+
                 if len(parts) < 9:
 
                     self.add_log(
@@ -2847,8 +3610,57 @@ class AvaPetApp(App):
                     .upper()
                 )
 
+                answer_text = (
+                    parts[2].strip()
+                )
+
+                # ------------------------------------------------
+                # LOGIC BATTLE
+                # ------------------------------------------------
+
+                if self.game_id == "LOGIC_BATTLE":
+
+                    if player == "AVA":
+
+                        self.game_ava_answer = (
+                            answer_text
+                        )
+
+                        self.game_ava_answered = True
+
+                        if self.game_ali_answered:
+
+                            self.logic_answer_label.text = (
+                                f"ALI: "
+                                f"{self.game_ali_answer} | "
+                                f"AVA: {answer_text} | "
+                                f"CHECKING..."
+                            )
+
+                        else:
+
+                            self.logic_answer_label.text = (
+                                f"AVA ANSWERED: "
+                                f"{answer_text}"
+                            )
+
+                    elif player == "ALI":
+
+                        self.game_ali_answer = (
+                            answer_text
+                        )
+
+                        self.game_ali_answered = True
+
+                    return
+
+
+                # ------------------------------------------------
+                # MATH BATTLE
+                # ------------------------------------------------
+
                 answer = int(
-                    parts[2]
+                    answer_text
                 )
 
                 if player == "AVA":
@@ -2878,9 +3690,18 @@ class AvaPetApp(App):
 
                 return
 
+
+
+
+
+
+
+
+
             # ------------------------------------------------
             # RESULT
             # ------------------------------------------------
+
 
             if message == "GAME_RESULT":
 
@@ -2897,20 +3718,41 @@ class AvaPetApp(App):
                     parts[1]
                 )
 
-                ali_answer = int(
-                    parts[2]
-                )
-
-                ava_answer = int(
-                    parts[3]
-                )
-
                 ali_correct = bool(
                     int(parts[4])
                 )
 
                 ava_correct = bool(
                     int(parts[5])
+                )
+
+                # ------------------------------------------------
+                # LOGIC BATTLE
+                # ------------------------------------------------
+
+                if self.game_id == "LOGIC_BATTLE":
+
+                    self.apply_logic_result(
+                        round_number,
+                        parts[2],
+                        parts[3],
+                        ali_correct,
+                        ava_correct,
+                    )
+
+                    return
+
+
+                # ------------------------------------------------
+                # MATH BATTLE
+                # ------------------------------------------------
+
+                ali_answer = int(
+                    parts[2]
+                )
+
+                ava_answer = int(
+                    parts[3]
                 )
 
                 self.apply_math_result(
@@ -2923,18 +3765,72 @@ class AvaPetApp(App):
 
                 return
 
+
             # ------------------------------------------------
-            # SCORE DEBUG
+            # SCORE
             # ------------------------------------------------
 
             if message == "GAME_SCORE":
 
-                if len(parts) >= 3:
+                if len(parts) < 3:
 
                     self.add_log(
-                        f"GAME SCORE DEBUG <- "
-                        f"ALI={parts[1]} "
-                        f"AVA={parts[2]}"
+                        "GAME SCORE ERROR: "
+                        "INVALID FIELD COUNT."
+                    )
+
+                    return
+
+                try:
+
+                    ali_score = int(
+                        parts[1]
+                    )
+
+                    ava_score = int(
+                        parts[2]
+                    )
+
+                    # ESP32 IS THE SOLE SCORE AUTHORITY.
+                    # Android only displays the score
+                    # received from ESP32.
+
+                    self.game_ali_score = ali_score
+                    self.game_ava_score = ava_score
+
+                    if self.game_id == "LOGIC_BATTLE":
+
+                        self.logic_score_label.text = (
+                            f"ALI: "
+                            f"{self.game_ali_score}"
+                            f"     "
+                            f"AVA: "
+                            f"{self.game_ava_score}"
+                        )
+
+                    else:
+
+                        self.math_score_label.text = (
+                            f"ALI: "
+                            f"{self.game_ali_score}"
+                            f"     "
+                            f"AVA: "
+                            f"{self.game_ava_score}"
+                        )
+
+                    self.add_log(
+                        f"GAME SCORE <- "
+                        f"ALI={self.game_ali_score} "
+                        f"AVA={self.game_ava_score}"
+                    )
+
+
+
+                except Exception as exc:
+
+                    self.add_log(
+                        f"GAME SCORE PARSE ERROR: "
+                        f"{exc} | {text}"
                     )
 
                 return
@@ -2942,6 +3838,7 @@ class AvaPetApp(App):
             # ------------------------------------------------
             # FINISHED
             # ------------------------------------------------
+
 
             if message == "GAME_FINISHED":
 
@@ -2951,11 +3848,21 @@ class AvaPetApp(App):
                     else "DRAW"
                 )
 
-                self.show_math_finished(
-                    winner
-                )
+                if self.game_id == "LOGIC_BATTLE":
+
+                    self.show_logic_finished(
+                        winner
+                    )
+
+                else:
+
+                    self.show_math_finished(
+                        winner
+                    )
 
                 return
+
+
 
         except Exception as exc:
 
@@ -2967,7 +3874,6 @@ class AvaPetApp(App):
     # ========================================================
     # APPLY RESULT
     # ========================================================
-
     def apply_math_result(
         self,
         round_number,
@@ -3062,6 +3968,93 @@ class AvaPetApp(App):
             f"{self.game_ali_score}:"
             f"{self.game_ava_score}"
         )
+        
+    
+    # ========================================================
+    # APPLY LOGIC RESULT
+    # ========================================================
+
+    def apply_logic_result(
+        self,
+        round_number,
+        ali_answer,
+        ava_answer,
+        ali_correct,
+        ava_correct,
+    ):
+
+        if (
+            round_number
+            == self.game_last_result_round
+        ):
+
+            return
+
+        self.game_last_result_round = (
+            round_number
+        )
+
+        self.game_ali_answer = (
+            str(ali_answer)
+        )
+
+        self.game_ava_answer = (
+            str(ava_answer)
+        )
+
+        self.game_ali_answered = True
+        self.game_ava_answered = True
+
+        if (
+            ali_correct
+            and not ava_correct
+        ):
+
+            result = (
+                "ALI WINS ROUND"
+            )
+
+        elif (
+            ava_correct
+            and not ali_correct
+        ):
+
+            result = (
+                "AVA WINS ROUND"
+            )
+
+        elif (
+            ali_correct
+            and ava_correct
+        ):
+
+            result = (
+                "ROUND DRAW"
+            )
+
+        else:
+
+            result = (
+                "NOBODY GETS A POINT"
+            )
+
+        self.logic_answer_label.text = (
+            f"ALI: {ali_answer} "
+            f"{'✓' if ali_correct else '✗'}    "
+            f"AVA: {ava_answer} "
+            f"{'✓' if ava_correct else '✗'}\n"
+            f"{result}"
+        )
+
+        self.add_log(
+            f"LOGIC RESULT | "
+            f"ROUND={round_number} | "
+            f"ALI={ali_answer}/"
+            f"{int(ali_correct)} | "
+            f"AVA={ava_answer}/"
+            f"{int(ava_correct)}"
+        )
+
 
     # ========================================================
     # FINISHED
@@ -3118,30 +4111,135 @@ class AvaPetApp(App):
         )
 
     # ========================================================
+    # LOGIC FINISHED
+    # ========================================================
+
+    def show_logic_finished(
+        self,
+        winner,
+    ):
+
+        winner_text = (
+            str(winner)
+            .strip()
+            .upper()
+        )
+
+        if winner_text in (
+            "ALI",
+            "ALI_WINS",
+        ):
+
+            final = "ALI WINS!"
+
+        elif winner_text in (
+            "AVA",
+            "AVA_WINS",
+        ):
+
+            final = "AVA WINS!"
+
+        else:
+
+            final = "DRAW!"
+
+        self.logic_answer_label.text = (
+            f"{final}\n"
+            f"FINAL SCORE  "
+            f"ALI: {self.game_ali_score}  "
+            f"AVA: {self.game_ava_score}"
+        )
+
+        for button in (
+            self.logic_option_buttons
+        ):
+
+            button.disabled = True
+
+        self.add_log(
+            f"LOGIC FINISHED | "
+            f"WINNER={winner_text} | "
+            f"SCORE="
+            f"{self.game_ali_score}:"
+            f"{self.game_ava_score}"
+        )
+
+
+    # ========================================================
     # BACK TO GAMES
     # ========================================================
+
 
     def back_to_games(self, *_):
 
         self.math_page.opacity = 0
         self.math_page.disabled = True
 
+        self.logic_page.opacity = 0
+        self.logic_page.disabled = True
+
         self.games_page.opacity = 1
         self.games_page.disabled = False
+        
+    # ====================================================
+    # SETTINGS PAGE
+    # ====================================================
 
-        self.games_status.text = (
-            "CHOOSE A GAME"
-        )
+    def show_settings(self):
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+        
+        self.finding_page.opacity = 0
+        self.finding_page.disabled = True
 
-        self._game_touch_lock = False
+        self.home_page.opacity = 0
+        self.home_page.disabled = True
 
-        self.ble.write_command(
-            "GAME_END"
-        )
+        self.games_page.opacity = 0
+        self.games_page.disabled = True
+
+        self.math_page.opacity = 0
+        self.math_page.disabled = True
+
+        self.logic_page.opacity = 0
+        self.logic_page.disabled = True
+
+        self.settings_page.opacity = 1
+        self.settings_page.disabled = False
+
+    # ====================================================
+    # AVA HOME
+    # ====================================================
+
+    def show_ava_home(self):
+
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+        
+        self.finding_page.opacity = 0
+        self.finding_page.disabled = True
+
+        self.games_page.opacity = 0
+        self.games_page.disabled = True
+
+        self.math_page.opacity = 0
+        self.math_page.disabled = True
+
+        self.logic_page.opacity = 0
+        self.logic_page.disabled = True
+
+        self.settings_page.opacity = 0
+        self.settings_page.disabled = True
+
+        self.home_page.opacity = 1
+        self.home_page.disabled = False
+        
+        self.home_games_button.disabled = False
+        self.home_settings_button.disabled = False
 
     # ========================================================
-    # LOG / UI STATE
-    # ========================================================
+     # LOG / UI STATE
+     # ========================================================
 
     def add_log(self, message):
 
@@ -3191,6 +4289,7 @@ class AvaPetApp(App):
                 "AVA CONNECTED"
             )
 
+            self.show_ava_home()
         # ----------------------------------------------------
         # RETRY
         # ----------------------------------------------------
@@ -3204,19 +4303,23 @@ class AvaPetApp(App):
         # ----------------------------------------------------
         # READY
         # ----------------------------------------------------
-
         if "AVA READY" in upper:
 
-            self.show_my_games()
+            self.show_ava_home()
 
         # ----------------------------------------------------
         # DISCONNECTED
         # ----------------------------------------------------
-
         if "GATT DISCONNECTED" in upper:
 
             self.finding_page.opacity = 1
             self.finding_page.disabled = False
+
+            self.home_page.opacity = 0
+            self.home_page.disabled = True
+
+            self.settings_page.opacity = 0
+            self.settings_page.disabled = True
 
             self.games_page.opacity = 0
             self.games_page.disabled = True
@@ -3224,8 +4327,11 @@ class AvaPetApp(App):
             self.math_page.opacity = 0
             self.math_page.disabled = True
 
+            self.logic_page.opacity = 0
+            self.logic_page.disabled = True
+
             self.finding_label.text = (
-                "Finding AVA"
+            "Finding AVA"
             )
 
             self.connect_button.disabled = False
