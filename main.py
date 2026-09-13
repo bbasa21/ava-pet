@@ -17,6 +17,7 @@ from kivy.core.window import Window
 from jnius import autoclass, PythonJavaClass, java_method
 
 from ava_games import AVAILABLE_GAMES, game_load_command
+from snake_ladder import build_snake_ladder_page, SnakeLadderGame
 
 
 # ============================================================
@@ -3004,6 +3005,12 @@ class AvaPetApp(App):
         _button_event=False,
     ):
 
+        if game_id == "SNAKE_LADDER":
+            self.game_id = "SNAKE_LADDER"
+            self.show_snake_ladder()
+            return
+
+
         game_id = str(
             game_id
         ).strip().upper()
@@ -4182,6 +4189,82 @@ class AvaPetApp(App):
     # BACK TO GAMES
     # ========================================================
 
+
+    def show_snake_ladder(self):
+        if getattr(self, "snake_page", None) is None:
+            (
+                self.snake_page,
+                self.snake_board,
+                self.snake_status,
+                self.snake_dice,
+                self.snake_turn,
+                self.snake_roll_button,
+            ) = build_snake_ladder_page(
+                FONT_NAME,
+                self.back_to_games,
+                self.roll_snake_ladder,
+                self.reset_snake_ladder,
+            )
+
+            self.snake_game = SnakeLadderGame(
+                self.snake_board,
+                self.snake_status,
+                self.snake_dice,
+                self.snake_turn,
+            )
+
+            self.snake_game.on_dice_result = self.snake_dice_result
+            self.snake_game.on_position_change = self.snake_position_change
+
+            self.snake_page.opacity = 0
+            self.snake_page.disabled = True
+            self.root_layout.add_widget(self.snake_page)
+
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+
+        for page_name in (
+            "finding_page",
+            "home_page",
+            "games_page",
+            "math_page",
+            "logic_page",
+            "settings_page",
+        ):
+            page = getattr(self, page_name, None)
+            if page is not None:
+                page.opacity = 0
+                page.disabled = True
+
+        self.snake_page.opacity = 1
+        self.snake_page.disabled = False
+        self.root_layout.remove_widget(self.snake_page)
+        self.root_layout.add_widget(self.snake_page)
+        self.snake_game.reset()
+        self.add_log("SNAKE & LADDER OPENED")
+
+    def roll_snake_ladder(self):
+        if getattr(self, "snake_game", None) is None:
+            return
+        self.snake_game.roll()
+        self.add_log("SNAKE DICE ROLL")
+
+    def reset_snake_ladder(self):
+        if getattr(self, "snake_game", None) is None:
+            return
+        self.snake_game.reset()
+        self.add_log("SNAKE & LADDER RESET")
+
+    def snake_dice_result(self, player, result):
+        self.add_log(
+            f"SNAKE DICE RESULT | PLAYER={player} | DICE={result}"
+        )
+
+    def snake_position_change(self, player, target, ali_position, ava_position):
+        self.add_log(
+            f"SNAKE POSITION | PLAYER={player} | TARGET={target} | "
+            f"ALI={ali_position} | AVA={ava_position}"
+        )
 
     def back_to_games(self, *_):
 
