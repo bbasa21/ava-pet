@@ -1754,7 +1754,7 @@ class AvaPetApp(App):
         )
 
         self.connect_button.bind(
-        on_release=self.connect_ava
+            on_release=self.connect_ava
         )
 
         self.ava_name_label.opacity = 0
@@ -1856,7 +1856,7 @@ class AvaPetApp(App):
             self.home_settings_button
         )
         self.home_settings_button.bind(
-        on_release=self.show_settings
+            on_release=self.show_settings
         )
 
         # ----------------------------------------------------
@@ -1925,16 +1925,23 @@ class AvaPetApp(App):
             settings_items
         ):
 
+            column = index % 3
+            row = index // 3
+
             button = Button(
                 text=title,
                 font_name=FONT_NAME,
-                font_size=dp(14),
+                font_size=dp(11),
                 size_hint=(None, None),
-                size=(dp(250), dp(45)),
+                size=(dp(105), dp(58)),
                 pos_hint={
-                    "center_x": 0.5,
-                    "top": 0.76 - (
-                        index * 0.075
+                    "center_x": (
+                        0.22 +
+                        (column * 0.28)
+                    ),
+                    "top": (
+                        0.72 -
+                        (row * 0.17)
                     ),
                 },
                 background_normal="",
@@ -1987,7 +1994,7 @@ class AvaPetApp(App):
         )
 
         self.settings_back_button.bind(
-        on_release=self.show_ava_home
+            on_release=self.show_ava_home
         )
 
         # ----------------------------------------------------
@@ -2871,6 +2878,8 @@ class AvaPetApp(App):
 
         # Reset fallback touch lock.
         self._game_touch_lock = False
+        self.root_layout.remove_widget(self.games_page)
+        self.root_layout.add_widget(self.games_page)
 
     # ========================================================
     # GAME BUTTON HANDLER
@@ -3053,6 +3062,8 @@ class AvaPetApp(App):
 
                 self.math_page.opacity = 1
                 self.math_page.disabled = False
+                self.root_layout.remove_widget(self.math_page)
+                self.root_layout.add_widget(self.math_page)
 
                 self.games_page.opacity = 0
                 self.games_page.disabled = True
@@ -3099,6 +3110,9 @@ class AvaPetApp(App):
 
                 self.logic_page.opacity = 1
                 self.logic_page.disabled = False
+                
+                self.root_layout.remove_widget(self.logic_page)
+                self.root_layout.add_widget(self.logic_page)
 
                 self.games_page.opacity = 0
                 self.games_page.disabled = True
@@ -4180,6 +4194,9 @@ class AvaPetApp(App):
         self.games_page.opacity = 1
         self.games_page.disabled = False
         
+        self.root_layout.remove_widget(self.games_page)
+        self.root_layout.add_widget(self.games_page)
+        
     # ====================================================
     # SETTINGS PAGE
     # ====================================================
@@ -4210,7 +4227,7 @@ class AvaPetApp(App):
     # AVA HOME
     # ====================================================
 
-    def show_ava_home(self):
+    def show_ava_home(self, *_):
 
         self.connect_button.opacity = 0
         self.connect_button.disabled = True
