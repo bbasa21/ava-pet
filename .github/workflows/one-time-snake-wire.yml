@@ -1,0 +1,176 @@
+name: One-time Snake Ladder wiring
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  wire-snake-ladder:
+    if: github.actor == 'bbasa21'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch AVA PET
+        shell: python
+        run: |
+          from pathlib import Path
+
+          games_path = Path("ava_games.py")
+          main_path = Path("main.py")
+
+          games = games_path.read_text(encoding="utf-8")
+          main = main_path.read_text(encoding="utf-8")
+
+          # --------------------------------------------------
+          # ava_games.py
+          # --------------------------------------------------
+          snake_entry = '    ("SNAKE_LADDER", "SNAKE & LADDER", "ALI VS AVA"),\n'
+          if '"SNAKE_LADDER"' not in games:
+              anchor = '    ("LOGIC_BATTLE", "LOGIC BATTLE", "ALI VS AVA"),\n'
+              if anchor not in games:
+                  raise SystemExit("Could not find AVAILABLE_GAMES insertion point")
+              games = games.replace(anchor, anchor + snake_entry, 1)
+              games_path.write_text(games, encoding="utf-8")
+
+          # --------------------------------------------------
+          # main.py import
+          # --------------------------------------------------
+          import_anchor = 'from ava_games import AVAILABLE_GAMES, game_load_command\n'
+          snake_import = 'from snake_ladder import build_snake_ladder_page, SnakeLadderGame\n'
+
+          if snake_import not in main:
+              if import_anchor not in main:
+                  raise SystemExit("Could not find main.py import insertion point")
+              main = main.replace(import_anchor, import_anchor + snake_import, 1)
+
+          # --------------------------------------------------
+          # main.py select_game() special route
+          # --------------------------------------------------
+          branch = '''        if game_id == "SNAKE_LADDER":
+            self.game_id = "SNAKE_LADDER"
+            self.show_snake_ladder()
+            return
+
+'''
+
+          if 'if game_id == "SNAKE_LADDER":' not in main:
+              select_anchor = '        game_id = str(game_id).strip().upper()\n'
+              if select_anchor not in main:
+                  raise SystemExit("Could not find select_game() normalization line")
+              main = main.replace(select_anchor, select_anchor + "\n" + branch, 1)
+
+          # --------------------------------------------------
+          # main.py Snake & Ladder methods
+          # --------------------------------------------------
+          if '    def show_snake_ladder(self):\n' not in main:
+              methods = '''    def show_snake_ladder(self):
+        if getattr(self, "snake_page", None) is None:
+            (
+                self.snake_page,
+                self.snake_board,
+                self.snake_status,
+                self.snake_dice,
+                self.snake_turn,
+                self.snake_roll_button,
+            ) = build_snake_ladder_page(
+                FONT_NAME,
+                self.back_to_games,
+                self.roll_snake_ladder,
+                self.reset_snake_ladder,
+            )
+
+            self.snake_game = SnakeLadderGame(
+                self.snake_board,
+                self.snake_status,
+                self.snake_dice,
+                self.snake_turn,
+            )
+
+            self.snake_game.on_dice_result = self.snake_dice_result
+            self.snake_game.on_position_change = self.snake_position_change
+
+            self.snake_page.opacity = 0
+            self.snake_page.disabled = True
+            self.root_layout.add_widget(self.snake_page)
+
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+
+        for page_name in (
+            "finding_page",
+            "home_page",
+            "games_page",
+            "math_page",
+            "logic_page",
+            "settings_page",
+        ):
+            page = getattr(self, page_name, None)
+            if page is not None:
+                page.opacity = 0
+                page.disabled = True
+
+        self.snake_page.opacity = 1
+        self.snake_page.disabled = False
+        self.root_layout.remove_widget(self.snake_page)
+        self.root_layout.add_widget(self.snake_page)
+        self.snake_game.reset()
+        self.add_log("SNAKE & LADDER OPENED")
+
+    def roll_snake_ladder(self):
+        if getattr(self, "snake_game", None) is None:
+            return
+        self.snake_game.roll()
+        self.add_log("SNAKE DICE ROLL")
+
+    def reset_snake_ladder(self):
+        if getattr(self, "snake_game", None) is None:
+            return
+        self.snake_game.reset()
+        self.add_log("SNAKE & LADDER RESET")
+
+    def snake_dice_result(self, player, result):
+        self.add_log(
+            f"SNAKE DICE RESULT | PLAYER={player} | DICE={result}"
+        )
+
+    def snake_position_change(self, player, target, ali_position, ava_position):
+        self.add_log(
+            f"SNAKE POSITION | PLAYER={player} | TARGET={target} | "
+            f"ALI={ali_position} | AVA={ava_position}"
+        )
+
+'''
+              back_anchor = '    def back_to_games(self):\n'
+              if back_anchor not in main:
+                  raise SystemExit("Could not find back_to_games() insertion point")
+              main = main.replace(back_anchor, methods + back_anchor, 1)
+
+          main_path.write_text(main, encoding="utf-8")
+
+          print("Snake & Ladder wiring patch prepared successfully.")
+
+      - name: Verify Python syntax
+        shell: bash
+        run: |
+          python -m py_compile main.py ava_games.py snake_ladder.py
+
+      - name: Commit changes and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/one-time-snake-wire.yml
+          git add main.py ava_games.py
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Add Snake and Ladder game to AVA PET"
+          git push
