@@ -51,12 +51,12 @@ jobs:
                   raise SystemExit("Could not find main.py import insertion point")
               main = main.replace(import_anchor, import_anchor + snake_import, 1)
 
-          branch = textwrap.dedent('''
-              if game_id == "SNAKE_LADDER":
-                  self.game_id = "SNAKE_LADDER"
-                  self.show_snake_ladder()
-                  return
-          ''')
+          branch = (
+              '        if game_id == "SNAKE_LADDER":\n'
+              '            self.game_id = "SNAKE_LADDER"\n'
+              '            self.show_snake_ladder()\n'
+              '            return\n\n'
+          )
           if 'if game_id == "SNAKE_LADDER":' not in main:
               select_anchor = '        game_id = str(game_id).strip().upper()\n'
               if select_anchor not in main:
