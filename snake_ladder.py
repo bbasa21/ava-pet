@@ -7,17 +7,15 @@
 
 import random
 
-from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp
-from kivy.properties import NumericProperty, StringProperty
+from kivy.properties import NumericProperty
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.widget import Widget
 
 
-# Classic 10x10 board. Values are the destination squares.
 SNAKES = {
     99: 54,
     95: 75,
@@ -46,8 +44,6 @@ LADDERS = {
 
 
 class SnakeLadderBoard(Widget):
-    """Draws a responsive 10x10 serpentine Snake & Ladder board."""
-
     player_ali = NumericProperty(0)
     player_ava = NumericProperty(0)
 
@@ -65,8 +61,6 @@ class SnakeLadderBoard(Widget):
         row = index // 10
         column = index % 10
 
-        # Serpentine numbering: bottom row goes left->right,
-        # next row right->left, and so on.
         if row % 2:
             column = 9 - column
 
@@ -81,18 +75,12 @@ class SnakeLadderBoard(Widget):
         self.canvas.clear()
 
         with self.canvas:
-            # Board background.
             Color(0.055, 0.035, 0.09, 1)
-            RoundedRectangle(
-                pos=self.pos,
-                size=self.size,
-                radius=[dp(14)],
-            )
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
 
             cell_w = self.width / 10.0
             cell_h = self.height / 10.0
 
-            # Cells and numbers.
             for square in range(1, 101):
                 index = square - 1
                 row = index // 10
@@ -115,23 +103,14 @@ class SnakeLadderBoard(Widget):
                 )
 
                 Color(1, 1, 1, 0.32)
-                Line(
-                    rectangle=(px, py, cell_w, cell_h),
-                    width=0.55,
-                )
+                Line(rectangle=(px, py, cell_w, cell_h), width=0.55)
 
-                # The number is drawn by the label overlay in the page.
-                # Keep the board canvas focused on geometry.
-
-            # Ladders.
             for start, end in LADDERS.items():
                 self._draw_ladder(start, end)
 
-            # Snakes.
             for start, end in SNAKES.items():
                 self._draw_snake(start, end)
 
-            # Tokens.
             self._draw_token(self.player_ali, 0.25, 0.75, 1.0)
             self._draw_token(self.player_ava, 0.95, 0.30, 0.75)
 
@@ -147,10 +126,16 @@ class SnakeLadderBoard(Widget):
         offset = dp(5)
 
         Color(0.90, 0.75, 0.18, 1)
-        Line(points=[x1 + nx * offset, y1 + ny * offset,
-                    x2 + nx * offset, y2 + ny * offset], width=dp(2.2))
-        Line(points=[x1 - nx * offset, y1 - ny * offset,
-                    x2 - nx * offset, y2 - ny * offset], width=dp(2.2))
+        Line(
+            points=[x1 + nx * offset, y1 + ny * offset,
+                    x2 + nx * offset, y2 + ny * offset],
+            width=dp(2.2),
+        )
+        Line(
+            points=[x1 - nx * offset, y1 - ny * offset,
+                    x2 - nx * offset, y2 - ny * offset],
+            width=dp(2.2),
+        )
 
         steps = 7
         for i in range(1, steps):
@@ -158,8 +143,11 @@ class SnakeLadderBoard(Widget):
             cx = x1 + dx * t
             cy = y1 + dy * t
             Color(0.96, 0.83, 0.28, 1)
-            Line(points=[cx + nx * offset, cy + ny * offset,
-                         cx - nx * offset, cy - ny * offset], width=dp(1.4))
+            Line(
+                points=[cx + nx * offset, cy + ny * offset,
+                        cx - nx * offset, cy - ny * offset],
+                width=dp(1.4),
+            )
 
     def _draw_snake(self, start, end):
         x1, y1 = self.square_center(start)
@@ -182,9 +170,10 @@ class SnakeLadderBoard(Widget):
             points.extend([base_x + nx * wave, base_y + ny * wave])
 
         Color(0.80, 0.16, 0.52, 1)
-        Line(points=points, width=dp(3.2), cap='round', joint='curve')
+        # Kivy accepts only: none, miter, bevel, round.
+        # 'curve' here caused the Android runtime crash.
+        Line(points=points, width=dp(3.2), joint='round')
 
-        # Head.
         Color(0.95, 0.24, 0.55, 1)
         Ellipse(pos=(x1 - dp(5), y1 - dp(5)), size=(dp(10), dp(10)))
 
@@ -194,15 +183,9 @@ class SnakeLadderBoard(Widget):
         cx, cy = self.square_center(square)
         radius = min(self.width, self.height) / 42.0
         Color(r, g, b, 1)
-        Ellipse(
-            pos=(cx - radius, cy - radius),
-            size=(radius * 2, radius * 2),
-        )
+        Ellipse(pos=(cx - radius, cy - radius), size=(radius * 2, radius * 2))
         Color(1, 1, 1, 0.85)
-        Line(
-            circle=(cx, cy, radius),
-            width=dp(1.1),
-        )
+        Line(circle=(cx, cy, radius), width=dp(1.1))
 
     def set_positions(self, ali, ava):
         self.player_ali = int(ali)
@@ -210,31 +193,26 @@ class SnakeLadderBoard(Widget):
 
 
 class SnakeLadderGame:
-    """Classic two-player Snake & Ladder game state + callbacks."""
-
     def __init__(self, board, status_label=None, dice_label=None, turn_label=None):
         self.board = board
         self.status_label = status_label
         self.dice_label = dice_label
         self.turn_label = turn_label
-
         self.ali = 0
         self.ava = 0
-        self.turn = "ALI"
+        self.turn = 'ALI'
         self.finished = False
         self.rolling = False
         self.roll_token = None
-
         self.on_position_change = None
         self.on_dice_result = None
         self.on_turn_change = None
-
         self.reset()
 
     def reset(self):
         self.ali = 0
         self.ava = 0
-        self.turn = "ALI"
+        self.turn = 'ALI'
         self.finished = False
         self.rolling = False
         self.roll_token = None
@@ -245,9 +223,9 @@ class SnakeLadderGame:
         if self.turn_label is not None:
             self.turn_label.text = f"{self.turn}'S TURN"
         if self.dice_label is not None:
-            self.dice_label.text = "🎲"
+            self.dice_label.text = '🎲'
         if self.status_label is not None:
-            self.status_label.text = "ROLL THE DICE"
+            self.status_label.text = 'ROLL THE DICE'
         if self.on_turn_change:
             self.on_turn_change(self.turn)
 
@@ -261,19 +239,17 @@ class SnakeLadderGame:
         frames = [random.randint(1, 6) for _ in range(8)]
 
         if self.status_label is not None:
-            self.status_label.text = "ROLLING..."
+            self.status_label.text = 'ROLLING...'
 
         def frame(index):
             if token is not self.roll_token:
                 return
             if self.dice_label is not None:
                 self.dice_label.text = str(frames[index])
-
             if index + 1 < len(frames):
                 Clock.schedule_once(lambda *_: frame(index + 1), 0.08)
             else:
-                result = frames[-1]
-                self._finish_roll(result)
+                self._finish_roll(frames[-1])
 
         frame(0)
 
@@ -288,9 +264,8 @@ class SnakeLadderGame:
         if self.on_dice_result:
             self.on_dice_result(self.turn, result)
 
-        current = self.ali if self.turn == "ALI" else self.ava
+        current = self.ali if self.turn == 'ALI' else self.ava
         target = current + result
-
         if target > 100:
             target = current
         else:
@@ -306,7 +281,7 @@ class SnakeLadderGame:
         return square
 
     def _move_current_player(self, target):
-        if self.turn == "ALI":
+        if self.turn == 'ALI':
             self.ali = target
         else:
             self.ava = target
@@ -319,28 +294,27 @@ class SnakeLadderGame:
             self.finished = True
             self.rolling = False
             if self.status_label is not None:
-                self.status_label.text = f"{self.turn} WINS!"
+                self.status_label.text = f'{self.turn} WINS!'
             return
 
-        self.turn = "AVA" if self.turn == "ALI" else "ALI"
+        self.turn = 'AVA' if self.turn == 'ALI' else 'ALI'
         self.rolling = False
         self._update_labels()
 
 
 def build_snake_ladder_page(font_name, back_callback, roll_callback, reset_callback):
-    """Small UI helper for embedding the game in an existing FloatLayout."""
     from kivy.uix.floatlayout import FloatLayout
 
     page = FloatLayout(size_hint=(1, 1))
 
     title = Label(
-        text="SNAKE & LADDER",
+        text='SNAKE & LADDER',
         font_name=font_name,
         font_size=dp(23),
         color=(1, 1, 1, 1),
         size_hint=(1, None),
         height=dp(45),
-        pos_hint={"center_x": 0.5, "top": 0.97},
+        pos_hint={'center_x': 0.5, 'top': 0.97},
     )
     page.add_widget(title)
 
@@ -351,48 +325,48 @@ def build_snake_ladder_page(font_name, back_callback, roll_callback, reset_callb
         color=(1, 1, 1, 1),
         size_hint=(1, None),
         height=dp(30),
-        pos_hint={"center_x": 0.5, "top": 0.90},
+        pos_hint={'center_x': 0.5, 'top': 0.90},
     )
     page.add_widget(turn_label)
 
     board = SnakeLadderBoard(
         size_hint=(0.88, None),
         height=dp(330),
-        pos_hint={"center_x": 0.5, "top": 0.85},
+        pos_hint={'center_x': 0.5, 'top': 0.85},
     )
     page.add_widget(board)
 
     status = Label(
-        text="ROLL THE DICE",
+        text='ROLL THE DICE',
         font_name=font_name,
         font_size=dp(11),
         color=(1, 1, 1, 1),
         size_hint=(0.70, None),
         height=dp(35),
-        pos_hint={"center_x": 0.37, "y": 0.08},
+        pos_hint={'center_x': 0.37, 'y': 0.08},
     )
     page.add_widget(status)
 
     dice = Label(
-        text="🎲",
+        text='🎲',
         font_name=font_name,
         font_size=dp(25),
         color=(1, 1, 1, 1),
         size_hint=(0.18, None),
         height=dp(45),
-        pos_hint={"center_x": 0.78, "y": 0.075},
+        pos_hint={'center_x': 0.78, 'y': 0.075},
     )
     page.add_widget(dice)
 
     roll_button = Button(
-        text="ROLL",
+        text='ROLL',
         font_name=font_name,
         font_size=dp(13),
         size_hint=(None, None),
         size=(dp(110), dp(42)),
-        pos_hint={"center_x": 0.30, "y": 0.015},
-        background_normal="",
-        background_down="",
+        pos_hint={'center_x': 0.30, 'y': 0.015},
+        background_normal='',
+        background_down='',
         background_color=(0.45, 0.12, 0.75, 0.9),
         color=(1, 1, 1, 1),
     )
@@ -400,14 +374,14 @@ def build_snake_ladder_page(font_name, back_callback, roll_callback, reset_callb
     page.add_widget(roll_button)
 
     reset_button = Button(
-        text="RESET",
+        text='RESET',
         font_name=font_name,
         font_size=dp(11),
         size_hint=(None, None),
         size=(dp(95), dp(38)),
-        pos_hint={"center_x": 0.52, "y": 0.018},
-        background_normal="",
-        background_down="",
+        pos_hint={'center_x': 0.52, 'y': 0.018},
+        background_normal='',
+        background_down='',
         background_color=(0.25, 0.08, 0.42, 0.9),
         color=(1, 1, 1, 1),
     )
@@ -415,14 +389,14 @@ def build_snake_ladder_page(font_name, back_callback, roll_callback, reset_callb
     page.add_widget(reset_button)
 
     back_button = Button(
-        text="BACK",
+        text='BACK',
         font_name=font_name,
         font_size=dp(11),
         size_hint=(None, None),
         size=(dp(80), dp(38)),
-        pos_hint={"center_x": 0.75, "y": 0.018},
-        background_normal="",
-        background_down="",
+        pos_hint={'center_x': 0.75, 'y': 0.018},
+        background_normal='',
+        background_down='',
         background_color=(0.15, 0.15, 0.18, 0.9),
         color=(1, 1, 1, 1),
     )
