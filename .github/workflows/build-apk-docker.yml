@@ -154,10 +154,11 @@ jobs:
 
               ''')
               methods = textwrap.indent(methods.lstrip(), "    ")
-              back_anchor = '    def back_to_games(self):\n'
-              if back_anchor not in main:
+              back_anchor = re.compile(r'(?m)^    def back_to_games\(')
+              match = back_anchor.search(main)
+              if not match:
                   raise SystemExit("Could not find back_to_games() insertion point")
-              main = main.replace(back_anchor, methods + back_anchor, 1)
+              main = main[:match.start()] + methods + main[match.start():]
 
           main_path.write_text(main, encoding="utf-8")
           print("Snake & Ladder wiring check/patch complete.")
