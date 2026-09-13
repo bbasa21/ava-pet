@@ -28,6 +28,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           import textwrap
 
           games_path = Path("ava_games.py")
@@ -36,6 +37,7 @@ jobs:
           games = games_path.read_text(encoding="utf-8")
           main = main_path.read_text(encoding="utf-8")
 
+          # Add the game to the existing Games list.
           snake_entry = '    ("SNAKE_LADDER", "SNAKE & LADDER", "ALI VS AVA"),\n'
           if '"SNAKE_LADDER"' not in games:
               anchor = '    ("LOGIC_BATTLE", "LOGIC BATTLE", "ALI VS AVA"),\n'
@@ -44,6 +46,7 @@ jobs:
               games = games.replace(anchor, anchor + snake_entry, 1)
               games_path.write_text(games, encoding="utf-8")
 
+          # Import the native Kivy Snake & Ladder module.
           import_anchor = 'from ava_games import AVAILABLE_GAMES, game_load_command\n'
           snake_import = 'from snake_ladder import build_snake_ladder_page, SnakeLadderGame\n'
           if snake_import not in main:
@@ -51,6 +54,7 @@ jobs:
                   raise SystemExit("Could not find main.py import insertion point")
               main = main.replace(import_anchor, import_anchor + snake_import, 1)
 
+          # Route SNAKE_LADDER before the generic GAME_LOAD BLE path.
           branch = (
               '        if game_id == "SNAKE_LADDER":\n'
               '            self.game_id = "SNAKE_LADDER"\n'
@@ -58,11 +62,18 @@ jobs:
               '            return\n\n'
           )
           if 'if game_id == "SNAKE_LADDER":' not in main:
-              select_anchor = '        game_id = str(game_id).strip().upper()\n'
-              if select_anchor not in main:
-                  raise SystemExit("Could not find select_game() normalization line")
-              main = main.replace(select_anchor, select_anchor + "\n" + branch, 1)
+              signature = re.compile(
+                  r'(    def select_game\(\n'
+                  r'        self,\n'
+                  r'        game_id,\n'
+                  r'        _button_event=False,\n'
+                  r'    \):\n)'
+              )
+              if not signature.search(main):
+                  raise SystemExit("Could not find select_game() signature")
+              main = signature.sub(r'\1\n' + branch, main, count=1)
 
+          # Add Snake page/controller methods before the existing Games-page method.
           if '    def show_snake_ladder(self):\n' not in main:
               methods = textwrap.dedent('''
                   def show_snake_ladder(self):
