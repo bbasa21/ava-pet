@@ -4,6 +4,8 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.widget import Widget
+from kivy.graphics import Color, RoundedRectangle, Line
 
 
 GAME_ID = "TIC_TAC_TOE"
@@ -13,6 +15,28 @@ def _hide(page):
     if page is not None:
         page.opacity = 0
         page.disabled = True
+
+
+def _panel(widget, radius=14, fill=(0.10, 0.06, 0.17, 0.94), border=(0.45, 0.12, 0.75, 0.65)):
+    with widget.canvas.before:
+        Color(*fill)
+        widget._bg = RoundedRectangle(pos=widget.pos, size=widget.size, radius=[dp(radius)])
+        Color(*border)
+        widget._line = Line(
+            rounded_rectangle=(widget.x, widget.y, widget.width, widget.height, dp(radius)),
+            width=1.1,
+        )
+    widget.bind(pos=lambda inst, val: _sync_panel(inst), size=lambda inst, val: _sync_panel(inst))
+
+
+def _sync_panel(widget):
+    if hasattr(widget, "_bg"):
+        widget._bg.pos = widget.pos
+        widget._bg.size = widget.size
+    if hasattr(widget, "_line"):
+        widget._line.rounded_rectangle = (
+            widget.x, widget.y, widget.width, widget.height, dp(14)
+        )
 
 
 def install_tictactoe(AvaPetApp, font_name="Roboto"):
@@ -40,64 +64,108 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
     def _ttt_build_page(self):
         self.ttt_page = FloatLayout(size_hint=(1, 1))
 
+        # ---------- Header ----------
         self.ttt_title = Label(
             text="TIC TAC TOE",
             font_name=self.ttt_font_name,
-            font_size=dp(24),
+            font_size=dp(23),
             color=(1, 1, 1, 1),
             size_hint=(1, None),
-            height=dp(55),
-            pos_hint={"center_x": 0.5, "top": 0.95},
+            height=dp(42),
+            pos_hint={"center_x": 0.5, "top": 0.965},
+            bold=True,
         )
         self.ttt_page.add_widget(self.ttt_title)
 
+        self.ttt_subtitle = Label(
+            text="ALI  X     •     AVA  O",
+            font_name=self.ttt_font_name,
+            font_size=dp(10),
+            color=(0.72, 0.62, 0.82, 1),
+            size_hint=(1, None),
+            height=dp(24),
+            pos_hint={"center_x": 0.5, "top": 0.905},
+        )
+        self.ttt_page.add_widget(self.ttt_subtitle)
+
+        # ---------- Score strip ----------
+        self.ttt_score_panel = Widget(
+            size_hint=(0.72, None),
+            height=dp(48),
+            pos_hint={"center_x": 0.5, "top": 0.865},
+        )
+        _panel(
+            self.ttt_score_panel,
+            radius=12,
+            fill=(0.11, 0.065, 0.18, 0.96),
+            border=(0.45, 0.12, 0.75, 0.48),
+        )
+        self.ttt_page.add_widget(self.ttt_score_panel)
+
         self.ttt_score = Label(
-            text="ALI: 0     AVA: 0",
+            text="ALI  0     —     0  AVA",
             font_name=self.ttt_font_name,
             font_size=dp(14),
             color=(1, 1, 1, 1),
-            size_hint=(1, None),
-            height=dp(35),
-            pos_hint={"center_x": 0.5, "top": 0.84},
+            size_hint=(1, 1),
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
         )
-        self.ttt_page.add_widget(self.ttt_score)
+        self.ttt_score_panel.add_widget(self.ttt_score)
 
+        # ---------- Turn/status ----------
         self.ttt_status = Label(
             text="WAITING...",
             font_name=self.ttt_font_name,
-            font_size=dp(14),
-            color=(1, 1, 1, 1),
-            size_hint=(0.94, None),
-            height=dp(48),
-            pos_hint={"center_x": 0.5, "top": 0.78},
+            font_size=dp(13),
+            color=(0.93, 0.86, 1, 1),
+            size_hint=(0.92, None),
+            height=dp(34),
+            pos_hint={"center_x": 0.5, "top": 0.795},
             halign="center",
             valign="middle",
+            bold=True,
         )
         self.ttt_status.bind(
             size=lambda inst, val: setattr(inst, "text_size", val)
         )
         self.ttt_page.add_widget(self.ttt_status)
 
+        # ---------- Board ----------
+        self.ttt_board_panel = Widget(
+            size_hint=(0.80, None),
+            height=dp(286),
+            pos_hint={"center_x": 0.5, "center_y": 0.505},
+        )
+        _panel(
+            self.ttt_board_panel,
+            radius=18,
+            fill=(0.075, 0.045, 0.12, 0.98),
+            border=(0.55, 0.20, 0.82, 0.72),
+        )
+        self.ttt_page.add_widget(self.ttt_board_panel)
+
         self.ttt_board = GridLayout(
             cols=3,
             rows=3,
-            spacing=dp(8),
-            padding=[dp(4), dp(4)],
-            size_hint=(0.78, None),
-            height=dp(270),
-            pos_hint={"center_x": 0.5, "center_y": 0.47},
+            spacing=dp(7),
+            padding=[dp(9), dp(9)],
+            size_hint=(0.96, 0.96),
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
         )
+        self.ttt_board_panel.add_widget(self.ttt_board)
 
         self.ttt_buttons = []
         for index in range(9):
             button = Button(
                 text="",
                 font_name=self.ttt_font_name,
-                font_size=dp(30),
+                font_size=dp(34),
+                bold=True,
                 background_normal="",
                 background_down="",
-                background_color=(0.45, 0.12, 0.75, 0.9),
+                background_color=(0.22, 0.08, 0.36, 1),
                 color=(1, 1, 1, 1),
+                border=(0, 0, 0, 0),
             )
             button.bind(
                 on_release=lambda _, idx=index: self.ttt_select_cell(idx)
@@ -105,19 +173,20 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
 
-        self.ttt_page.add_widget(self.ttt_board)
-
+        # ---------- Bottom controls ----------
         self.ttt_rematch_button = Button(
             text="REMATCH",
             font_name=self.ttt_font_name,
-            font_size=dp(13),
+            font_size=dp(12),
+            bold=True,
             size_hint=(None, None),
-            size=(dp(145), dp(42)),
-            pos_hint={"center_x": 0.30, "y": 0.10},
+            size=(dp(142), dp(42)),
+            pos_hint={"center_x": 0.30, "y": 0.085},
             background_normal="",
             background_down="",
-            background_color=(0.45, 0.12, 0.75, 0.9),
+            background_color=(0.45, 0.12, 0.75, 1),
             color=(1, 1, 1, 1),
+            border=(0, 0, 0, 0),
         )
         self.ttt_rematch_button.bind(on_release=self.ttt_rematch)
         self.ttt_page.add_widget(self.ttt_rematch_button)
@@ -125,14 +194,16 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         self.ttt_back_button = Button(
             text="BACK TO GAMES",
             font_name=self.ttt_font_name,
-            font_size=dp(12),
+            font_size=dp(11),
+            bold=True,
             size_hint=(None, None),
-            size=(dp(145), dp(42)),
-            pos_hint={"center_x": 0.70, "y": 0.10},
+            size=(dp(142), dp(42)),
+            pos_hint={"center_x": 0.70, "y": 0.085},
             background_normal="",
             background_down="",
-            background_color=(0.25, 0.08, 0.42, 0.9),
-            color=(1, 1, 1, 1),
+            background_color=(0.18, 0.07, 0.30, 1),
+            color=(0.82, 0.76, 0.88, 1),
+            border=(0, 0, 0, 0),
         )
         self.ttt_back_button.bind(on_release=self.back_to_games)
         self.ttt_page.add_widget(self.ttt_back_button)
@@ -202,9 +273,17 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
                 )
             )
 
+            # Empty cells are slightly darker; occupied cells get a brighter
+            # purple surface so X/O reads as the focus of the board.
+            if value == "-":
+                button.background_color = (0.17, 0.055, 0.29, 1)
+            else:
+                button.background_color = (0.36, 0.09, 0.58, 1)
+                button.color = (1, 1, 1, 1)
+
         self.ttt_score.text = (
-            f"ALI: {self.ttt_ali_score}     "
-            f"AVA: {self.ttt_ava_score}"
+            f"ALI  {self.ttt_ali_score}     —     "
+            f"{self.ttt_ava_score}  AVA"
         )
 
     def ttt_select_cell(self, index):
