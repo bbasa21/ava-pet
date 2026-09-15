@@ -43,24 +43,23 @@ public final class AvaGattCallback extends BluetoothGattCallback {
         if (newState == BluetoothGatt.STATE_CONNECTED) {
             reconnectAttempts = 0;
             mtuRequested = false;
-            push("STATE|" + status + "|" + newState);
 
-            // Android ATT defaults to a 23-byte MTU, which leaves only 20
-            // bytes for an attribute value. AVA commands can exceed 20 bytes
-            // (for example GAME_LOAD|MATH_BATTLE is 21 bytes), so negotiate a
-            // larger MTU before service discovery and before Python can mark
-            // the GATT connection ready for writes.
+            // Do NOT let Python start service discovery yet. Android can still
+            // be negotiating the ATT MTU, and starting discovery at the same
+            // time can cause intermittent GATT failures on some phones.
             try {
                 if (gatt != null && gatt.requestMtu(REQUESTED_MTU)) {
                     mtuRequested = true;
+                    push("STATE|" + status + "|" + newState);
                     push("MTU_REQUESTED|" + REQUESTED_MTU);
                     return;
                 }
             } catch (Exception ignored) {
             }
 
-            // If MTU negotiation cannot be requested, keep the connection
-            // usable and continue with the existing discovery flow.
+            // MTU negotiation was unavailable/failed. The connection is still
+            // usable, so notify Python and let it perform normal discovery.
+            push("STATE|" + status + "|" + newState);
             discoverServices(gatt);
             return;
         }
@@ -114,12 +113,20 @@ public final class AvaGattCallback extends BluetoothGattCallback {
     public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
         currentGatt = gatt;
         mtuRequested = false;
-        push("MTU|" + mtu + "|" + status);
 
-        // Service discovery happens only after the MTU exchange completes.
-        // This guarantees that Python cannot become GATT-ready and send a
-        // command while Android is still using the default 20-byte payload.
-        discoverServices(gatt);
+        // MTU negotiation has completed. Python receives the connected event
+        // here, then its existing STATE handler starts service discovery.
+        // This keeps the order deterministic: CONNECT -> MTU -> DISCOVERY.
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            push("STATE|" + BluetoothGatt.GATT_SUCCESS + "|" + BluetoothGatt.STATE_CONNECTED);
+            push("MTU|" + mtu + "|" + status);
+            return;
+        }
+
+        // If the MTU exchange failed, still expose the connection and continue
+        // with discovery using Android's default MTU.
+        push("STATE|" + status + "|" + BluetoothGatt.STATE_CONNECTED);
+        push("MTU|" + mtu + "|" + status);
     }
 
     private void discoverServices(BluetoothGatt gatt) {
@@ -166,17 +173,16 @@ public final class AvaGattCallback extends BluetoothGattCallback {
         UUID characteristicUuid = characteristic == null ? null : characteristic.getUuid();
 
         // The Python side originally enabled only EVENT notifications. Keep
-        // that public API intact, but once EVENT CCCD succeeds, automatically
-        // enable DATA notifications as the second CCCD transaction. This is
-        // required because AVA game messages arrive on DATA, not EVENT.
+        // that public API intact, but once EVENT notifications succeed,
+        // automatically enable DATA notifications as the second CCCD
+        // transaction. This is required because AVA game messages arrive on
+        // DATA, not EVENT.
         if (status == BluetoothGatt.GATT_SUCCESS
                 && characteristicUuid != null
                 && characteristicUuid.equals(EVENT_UUID)) {
             if (enableDataNotifications(gatt)) {
                 return;
             }
-            // If DATA setup cannot even be requested, report the failure to
-            // Python so AVA is not left apparently ready for games.
             push("DESCRIPTOR|" + EVENT_UUID + "|133");
             return;
         }
