@@ -134,16 +134,22 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         parts = value.split("|")
         kind = parts[0].upper() if parts else ""
         if kind == "TTT_STATE" and len(parts) >= 3:
-            board = parts[1]
-            turn = parts[2].upper()
-            if len(board) == 9:
-                self.ttt_board_state = list(board)
-            self.ttt_turn = turn
-            self.ttt_selected_pending = False
-            if self.ttt_finished:
-                self.ttt_status.text = "ROUND FINISHED"
+            board = parts[1].strip().upper()
+            turn = parts[2].strip().upper()
+            if len(board) != 9 or any(char not in "XO-" for char in board):
+                self.add_log(f"TIC TAC TOE INVALID STATE -> {value}")
+                return
+            self.ttt_board_state = list(board)
+            if turn in ("X", "ALI"):
+                self.ttt_turn = "ALI"
+            elif turn in ("O", "AVA"):
+                self.ttt_turn = "AVA"
             else:
-                self.ttt_status.text = "YOUR TURN" if turn == "ALI" else "AVA THINKING..."
+                self.add_log(f"TIC TAC TOE INVALID TURN -> {value}")
+                return
+            self.ttt_selected_pending = False
+            if not self.ttt_finished:
+                self.ttt_status.text = "YOUR TURN" if self.ttt_turn == "ALI" else "AVA THINKING..."
             self._ttt_render_board()
             return
         if kind == "TTT_MOVE_ACCEPTED":
@@ -159,13 +165,15 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             self.add_log(f"TIC TAC TOE AVA MOVE -> {value}")
             return
         if kind == "TTT_RESULT":
-            winner = parts[1].upper() if len(parts) > 1 else "DRAW"
+            winner = parts[1].strip().upper() if len(parts) > 1 else "DRAW"
             self.ttt_status.text = "YOU WIN!" if winner == "ALI" else ("AVA WINS!" if winner == "AVA" else "DRAW!")
             return
         if kind == "TTT_FINISHED":
+            winner = parts[1].strip().upper() if len(parts) > 1 else "DRAW"
             self.ttt_finished = True
             self.ttt_selected_pending = False
             self.ttt_rematch.disabled = False
+            self.ttt_status.text = "YOU WIN!" if winner == "ALI" else ("AVA WINS!" if winner == "AVA" else "DRAW!")
             self._ttt_render_board()
             return
         if kind == "TTT_SCORE" and len(parts) >= 3:
@@ -173,7 +181,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
                 self.ttt_ali_score = int(parts[1])
                 self.ttt_ava_score = int(parts[2])
             except ValueError:
-                pass
+                return
             self._ttt_render_board()
 
     def handle_game_data(self, text):
@@ -184,7 +192,28 @@ def install_tictactoe(app_class, font_name="Orbitron"):
 
     def start_automatic_scan(self, *args):
         self._ttt_hide()
-        return original_start_automatic_scan(self, *args)
+        result = original_start_automatic_scan(self, *args)
+        self._ttt_auto_connecting = False
+
+        def watch_for_ava(_dt):
+            if self._ttt_auto_connecting:
+                return False
+            try:
+                if self.ble.has_ava():
+                    self._ttt_auto_connecting = True
+                    self.add_log("AVA FOUND -> AUTO CONNECT")
+                    if self.ble.connect():
+                        self.add_log("AUTO CONNECT REQUEST SENT")
+                    else:
+                        self.add_log("AUTO CONNECT REQUEST FAILED")
+                        self._ttt_auto_connecting = False
+            except Exception as exc:
+                self.add_log(f"AUTO CONNECT WATCH ERROR: {exc}")
+                self._ttt_auto_connecting = False
+            return True
+
+        Clock.schedule_interval(watch_for_ava, 0.5)
+        return result
 
     app_class.build = build
     app_class.select_game = select_game
