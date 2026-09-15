@@ -108,7 +108,12 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         self._ttt_render_board()
         command=f"TTT_MOVE|ALI|{index}"
         self.add_log(f"TIC TAC TOE MOVE -> {command}")
-        if not self.ble.write_data(command):
+        try:
+            sent=self.ble.write_data(command)
+        except Exception as exc:
+            sent=False
+            self.add_log(f"TIC TAC TOE WRITE ERROR -> {exc}")
+        if not sent:
             self.ttt_selected_pending=False
             self.ttt_status.text="MOVE SEND FAILED"
             self._ttt_render_board()
