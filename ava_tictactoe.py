@@ -119,9 +119,7 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
             background_color=(0.45, 0.12, 0.75, 0.9),
             color=(1, 1, 1, 1),
         )
-        self.ttt_rematch_button.bind(
-            on_release=self.ttt_rematch
-        )
+        self.ttt_rematch_button.bind(on_release=self.ttt_rematch)
         self.ttt_page.add_widget(self.ttt_rematch_button)
 
         self.ttt_back_button = Button(
@@ -342,12 +340,15 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
 
         self.add_log("GAME LOAD -> TIC_TAC_TOE")
 
-        if not self.ble.write_command("GAME_START"):
+        # GAME_LOAD identifies the game on ESP32. The existing BLE game
+        # command flow has no separate TTT start state, so use the TTT
+        # rematch command to initialize the first round in the ESP32 engine.
+        if not self.ble.write_data("TTT_REMATCH"):
             self.ttt_status.text = "GAME START FAILED"
-            self.add_log("TIC TAC TOE GAME_START FAILED")
+            self.add_log("TIC TAC TOE INITIALIZATION FAILED")
             return
 
-        self.add_log("GAME START -> TIC_TAC_TOE")
+        self.add_log("TTT INIT -> TTT_REMATCH")
 
     def handle_game_data(self, text):
         if self.game_id == GAME_ID and str(text).strip().upper().startswith("TTT_"):
