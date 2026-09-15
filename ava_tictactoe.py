@@ -186,11 +186,20 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         for index, button in enumerate(self.ttt_buttons):
             value = board[index] if index < len(board) else "-"
             button.text = "" if value == "-" else value
+
+            # Keep existing X/O marks fully bright. Kivy dims disabled
+            # buttons via opacity, which was making occupied cells look dark.
+            # Empty cells are still disabled when it is AVA's turn or while
+            # ALI's move is waiting for the ESP32 response.
             button.disabled = (
                 self.ttt_finished
-                or self.ttt_selected_pending
-                or self.ttt_turn != "ALI"
-                or value != "-"
+                or (
+                    value == "-"
+                    and (
+                        self.ttt_selected_pending
+                        or self.ttt_turn != "ALI"
+                    )
+                )
             )
 
         self.ttt_score.text = (
@@ -431,5 +440,3 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
     AvaPetApp.show_settings = show_settings
     AvaPetApp.show_ava_home = show_ava_home
     AvaPetApp.start_automatic_scan = start_automatic_scan
-
-# End of AVA Tic-Tac-Toe controller module.
