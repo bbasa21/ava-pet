@@ -8,7 +8,7 @@ from kivy.uix.label import Label
 GAME_ID = "TIC_TAC_TOE"
 
 
-def install_tictactoe(app_class):
+def install_tictactoe(app_class, font_name="Orbitron"):
     original_build = app_class.build
     original_start_automatic_scan = app_class.start_automatic_scan
     original_handle_game_data = app_class.handle_game_data
@@ -18,21 +18,21 @@ def install_tictactoe(app_class):
         root = original_build(self)
 
         self.ttt_page = FloatLayout(size_hint=(1, 1))
-        self.ttt_title = Label(text="TIC TAC TOE", font_name="Orbitron", font_size=dp(24), size_hint=(1, None), height=dp(45), pos_hint={"center_x": .5, "top": .96})
-        self.ttt_subtitle = Label(text="ALI X  •  AVA O", font_name="Orbitron", font_size=dp(12), size_hint=(1, None), height=dp(30), pos_hint={"center_x": .5, "top": .89})
-        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name="Orbitron", font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "top": .82})
-        self.ttt_status = Label(text="YOUR TURN", font_name="Orbitron", font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .14})
+        self.ttt_title = Label(text="TIC TAC TOE", font_name=font_name, font_size=dp(24), size_hint=(1, None), height=dp(45), pos_hint={"center_x": .5, "top": .96})
+        self.ttt_subtitle = Label(text="ALI X  •  AVA O", font_name=font_name, font_size=dp(12), size_hint=(1, None), height=dp(30), pos_hint={"center_x": .5, "top": .89})
+        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "top": .82})
+        self.ttt_status = Label(text="YOUR TURN", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .14})
 
         self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .49})
         self.ttt_buttons = []
         for index in range(9):
-            button = Button(text="", font_name="Orbitron", font_size=dp(42), background_normal="", background_down="", background_color=(.17, .055, .29, 1), color=(1, 1, 1, 1), disabled=False)
+            button = Button(text="", font_name=font_name, font_size=dp(42), background_normal="", background_down="", background_color=(.17, .055, .29, 1), color=(1, 1, 1, 1), disabled=False)
             button.bind(on_release=lambda btn, idx=index: self.ttt_select_cell(idx))
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
 
-        self.ttt_rematch = Button(text="REMATCH", font_name="Orbitron", font_size=dp(12), size_hint=(None, None), size=(dp(135), dp(42)), pos_hint={"center_x": .37, "y": .055}, background_normal="", background_down="", background_color=(.25, .08, .42, 1))
-        self.ttt_back = Button(text="BACK TO GAMES", font_name="Orbitron", font_size=dp(11), size_hint=(None, None), size=(dp(155), dp(42)), pos_hint={"center_x": .67, "y": .055}, background_normal="", background_down="", background_color=(.25, .08, .42, 1))
+        self.ttt_rematch = Button(text="REMATCH", font_name=font_name, font_size=dp(12), size_hint=(None, None), size=(dp(135), dp(42)), pos_hint={"center_x": .37, "y": .055}, background_normal="", background_down="", background_color=(.25, .08, .42, 1))
+        self.ttt_back = Button(text="BACK TO GAMES", font_name=font_name, font_size=dp(11), size_hint=(None, None), size=(dp(155), dp(42)), pos_hint={"center_x": .67, "y": .055}, background_normal="", background_down="", background_color=(.25, .08, .42, 1))
         self.ttt_rematch.bind(on_release=self.ttt_request_rematch)
         self.ttt_back.bind(on_release=self.back_to_games)
 
