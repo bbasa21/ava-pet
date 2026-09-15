@@ -18,6 +18,7 @@ from jnius import autoclass, PythonJavaClass, java_method
 
 from ava_games import AVAILABLE_GAMES, game_load_command
 from snake_ladder import build_snake_ladder_page, SnakeLadderGame
+from ava_tictactoe import install_tictactoe
 
 
 # ============================================================
@@ -4448,4 +4449,5 @@ class AvaPetApp(App):
 
 if __name__ == "__main__":
 
+    install_tictactoe(AvaPetApp, FONT_NAME)
     AvaPetApp().run()
