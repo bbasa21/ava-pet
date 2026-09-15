@@ -44,13 +44,13 @@ public final class AvaGattCallback extends BluetoothGattCallback {
             reconnectAttempts = 0;
             mtuRequested = false;
 
-            // Do NOT let Python start service discovery yet. Android can still
-            // be negotiating the ATT MTU, and starting discovery at the same
-            // time can cause intermittent GATT failures on some phones.
+            // Do not emit STATE yet when MTU negotiation succeeds. The Python
+            // side starts service discovery from STATE, so emitting it here
+            // would race the ATT MTU exchange. onMtuChanged() emits STATE after
+            // the exchange has completed.
             try {
                 if (gatt != null && gatt.requestMtu(REQUESTED_MTU)) {
                     mtuRequested = true;
-                    push("STATE|" + status + "|" + newState);
                     push("MTU_REQUESTED|" + REQUESTED_MTU);
                     return;
                 }
@@ -117,14 +117,6 @@ public final class AvaGattCallback extends BluetoothGattCallback {
         // MTU negotiation has completed. Python receives the connected event
         // here, then its existing STATE handler starts service discovery.
         // This keeps the order deterministic: CONNECT -> MTU -> DISCOVERY.
-        if (status == BluetoothGatt.GATT_SUCCESS) {
-            push("STATE|" + BluetoothGatt.GATT_SUCCESS + "|" + BluetoothGatt.STATE_CONNECTED);
-            push("MTU|" + mtu + "|" + status);
-            return;
-        }
-
-        // If the MTU exchange failed, still expose the connection and continue
-        // with discovery using Android's default MTU.
         push("STATE|" + status + "|" + BluetoothGatt.STATE_CONNECTED);
         push("MTU|" + mtu + "|" + status);
     }
