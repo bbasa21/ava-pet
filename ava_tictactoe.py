@@ -4,9 +4,6 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.widget import Widget
-from kivy.graphics import Color, RoundedRectangle, Line
-
 
 GAME_ID = "TIC_TAC_TOE"
 
@@ -15,28 +12,6 @@ def _hide(page):
     if page is not None:
         page.opacity = 0
         page.disabled = True
-
-
-def _panel(widget, radius=14, fill=(0.10, 0.06, 0.17, 0.94), border=(0.45, 0.12, 0.75, 0.65)):
-    with widget.canvas.before:
-        Color(*fill)
-        widget._bg = RoundedRectangle(pos=widget.pos, size=widget.size, radius=[dp(radius)])
-        Color(*border)
-        widget._line = Line(
-            rounded_rectangle=(widget.x, widget.y, widget.width, widget.height, dp(radius)),
-            width=1.1,
-        )
-    widget.bind(pos=lambda inst, val: _sync_panel(inst), size=lambda inst, val: _sync_panel(inst))
-
-
-def _sync_panel(widget):
-    if hasattr(widget, "_bg"):
-        widget._bg.pos = widget.pos
-        widget._bg.size = widget.size
-    if hasattr(widget, "_line"):
-        widget._line.rounded_rectangle = (
-            widget.x, widget.y, widget.width, widget.height, dp(14)
-        )
 
 
 def install_tictactoe(AvaPetApp, font_name="Roboto"):
@@ -64,7 +39,6 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
     def _ttt_build_page(self):
         self.ttt_page = FloatLayout(size_hint=(1, 1))
 
-        # ---------- Header ----------
         self.ttt_title = Label(
             text="TIC TAC TOE",
             font_name=self.ttt_font_name,
@@ -88,31 +62,17 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         )
         self.ttt_page.add_widget(self.ttt_subtitle)
 
-        # ---------- Score strip ----------
-        self.ttt_score_panel = Widget(
-            size_hint=(0.72, None),
-            height=dp(48),
-            pos_hint={"center_x": 0.5, "top": 0.865},
-        )
-        _panel(
-            self.ttt_score_panel,
-            radius=12,
-            fill=(0.11, 0.065, 0.18, 0.96),
-            border=(0.45, 0.12, 0.75, 0.48),
-        )
-        self.ttt_page.add_widget(self.ttt_score_panel)
-
         self.ttt_score = Label(
             text="ALI  0     —     0  AVA",
             font_name=self.ttt_font_name,
             font_size=dp(14),
             color=(1, 1, 1, 1),
-            size_hint=(1, 1),
-            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            size_hint=(1, None),
+            height=dp(40),
+            pos_hint={"center_x": 0.5, "top": 0.865},
         )
-        self.ttt_score_panel.add_widget(self.ttt_score)
+        self.ttt_page.add_widget(self.ttt_score)
 
-        # ---------- Turn/status ----------
         self.ttt_status = Label(
             text="WAITING...",
             font_name=self.ttt_font_name,
@@ -125,34 +85,21 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
             valign="middle",
             bold=True,
         )
-        self.ttt_status.bind(
-            size=lambda inst, val: setattr(inst, "text_size", val)
-        )
+        self.ttt_status.bind(size=lambda inst, val: setattr(inst, "text_size", val))
         self.ttt_page.add_widget(self.ttt_status)
 
-        # ---------- Board ----------
-        self.ttt_board_panel = Widget(
-            size_hint=(0.80, None),
-            height=dp(286),
-            pos_hint={"center_x": 0.5, "center_y": 0.505},
-        )
-        _panel(
-            self.ttt_board_panel,
-            radius=18,
-            fill=(0.075, 0.045, 0.12, 0.98),
-            border=(0.55, 0.20, 0.82, 0.72),
-        )
-        self.ttt_page.add_widget(self.ttt_board_panel)
-
+        # Simple Kivy layout only: no custom canvas/rounded rectangles.
+        # This keeps the game screen compatible with the Android renderer.
         self.ttt_board = GridLayout(
             cols=3,
             rows=3,
             spacing=dp(7),
             padding=[dp(9), dp(9)],
-            size_hint=(0.96, 0.96),
-            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            size_hint=(0.80, None),
+            height=dp(286),
+            pos_hint={"center_x": 0.5, "center_y": 0.505},
         )
-        self.ttt_board_panel.add_widget(self.ttt_board)
+        self.ttt_page.add_widget(self.ttt_board)
 
         self.ttt_buttons = []
         for index in range(9):
@@ -163,17 +110,14 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
                 bold=True,
                 background_normal="",
                 background_down="",
-                background_color=(0.22, 0.08, 0.36, 1),
+                background_color=(0.17, 0.055, 0.29, 1),
                 color=(1, 1, 1, 1),
                 border=(0, 0, 0, 0),
             )
-            button.bind(
-                on_release=lambda _, idx=index: self.ttt_select_cell(idx)
-            )
+            button.bind(on_release=lambda _, idx=index: self.ttt_select_cell(idx))
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
 
-        # ---------- Bottom controls ----------
         self.ttt_rematch_button = Button(
             text="REMATCH",
             font_name=self.ttt_font_name,
@@ -224,14 +168,7 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         _hide(getattr(self, "ttt_page", None))
 
     def _ttt_show(self):
-        for name in (
-            "finding_page",
-            "home_page",
-            "games_page",
-            "math_page",
-            "logic_page",
-            "settings_page",
-        ):
+        for name in ("finding_page", "home_page", "games_page", "math_page", "logic_page", "settings_page"):
             _hide(getattr(self, name, None))
 
         self.connect_button.opacity = 0
@@ -257,54 +194,33 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         for index, button in enumerate(self.ttt_buttons):
             value = board[index] if index < len(board) else "-"
             button.text = "" if value == "-" else value
-
-            # Keep existing X/O marks fully bright. Kivy dims disabled
-            # buttons via opacity, which was making occupied cells look dark.
-            # Empty cells are still disabled when it is AVA's turn or while
-            # ALI's move is waiting for the ESP32 response.
             button.disabled = (
                 self.ttt_finished
                 or (
                     value == "-"
-                    and (
-                        self.ttt_selected_pending
-                        or self.ttt_turn != "ALI"
-                    )
+                    and (self.ttt_selected_pending or self.ttt_turn != "ALI")
                 )
             )
+            button.background_color = (
+                (0.17, 0.055, 0.29, 1)
+                if value == "-"
+                else (0.36, 0.09, 0.58, 1)
+            )
+            button.color = (1, 1, 1, 1)
 
-            # Empty cells are slightly darker; occupied cells get a brighter
-            # purple surface so X/O reads as the focus of the board.
-            if value == "-":
-                button.background_color = (0.17, 0.055, 0.29, 1)
-            else:
-                button.background_color = (0.36, 0.09, 0.58, 1)
-                button.color = (1, 1, 1, 1)
-
-        self.ttt_score.text = (
-            f"ALI  {self.ttt_ali_score}     —     "
-            f"{self.ttt_ava_score}  AVA"
-        )
+        self.ttt_score.text = f"ALI  {self.ttt_ali_score}     —     {self.ttt_ava_score}  AVA"
 
     def ttt_select_cell(self, index):
-        if self.ttt_finished:
+        if self.ttt_finished or self.ttt_turn != "ALI" or self.ttt_selected_pending:
             return
-        if self.ttt_turn != "ALI":
-            return
-        if self.ttt_selected_pending:
-            return
-        if index < 0 or index >= 9:
-            return
-        if self.ttt_board_state[index] != "-":
+        if index < 0 or index >= 9 or self.ttt_board_state[index] != "-":
             return
 
         self.ttt_selected_pending = True
         self.ttt_status.text = "AVA THINKING..."
         self._ttt_render_board()
-
         command = f"TTT_MOVE|ALI|{index}"
         self.add_log(f"TIC TAC TOE MOVE -> {command}")
-
         if not self.ble.write_data(command):
             self.ttt_selected_pending = False
             self.ttt_status.text = "MOVE SEND FAILED"
@@ -313,13 +229,11 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
     def ttt_rematch(self, *_):
         if not self.ttt_finished:
             return
-
         self.ttt_finished = False
         self.ttt_selected_pending = False
         self.ttt_rematch_button.disabled = True
         self.ttt_status.text = "REMATCH STARTING..."
         self._ttt_render_board()
-
         if self.ble.write_data("TTT_REMATCH"):
             self.add_log("TIC TAC TOE REMATCH -> TTT_REMATCH")
         else:
@@ -340,27 +254,18 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
             if len(board) != 9 or any(c not in "XO-" for c in board):
                 self.add_log(f"TTT INVALID BOARD <- {text}")
                 return
-
             self.ttt_board_state = board
             self.ttt_turn = turn if turn in ("ALI", "AVA") else "ALI"
             self.ttt_selected_pending = False
             self.ttt_finished = False
             self.ttt_rematch_button.disabled = True
-            self.ttt_status.text = (
-                "YOUR TURN" if self.ttt_turn == "ALI" else "AVA THINKING..."
-            )
+            self.ttt_status.text = "YOUR TURN" if self.ttt_turn == "ALI" else "AVA THINKING..."
             self._ttt_render_board()
             return
 
         if message == "TTT_MOVE":
-            if len(parts) < 3:
-                return
-            player = parts[1].strip().upper()
-            try:
-                cell = int(parts[2])
-            except Exception:
-                return
-            self.add_log(f"TIC TAC TOE MOVE <- {player}|{cell}")
+            if len(parts) >= 3:
+                self.add_log(f"TIC TAC TOE MOVE <- {parts[1].strip().upper()}|{parts[2].strip()}")
             return
 
         if message == "TTT_MOVE_ACCEPTED":
@@ -377,12 +282,7 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
 
         if message == "TTT_RESULT":
             winner = parts[1].strip().upper() if len(parts) > 1 else "DRAW"
-            if winner == "ALI":
-                self.ttt_status.text = "ALI WINS!"
-            elif winner == "AVA":
-                self.ttt_status.text = "AVA WINS!"
-            else:
-                self.ttt_status.text = "DRAW!"
+            self.ttt_status.text = "ALI WINS!" if winner == "ALI" else ("AVA WINS!" if winner == "AVA" else "DRAW!")
             self.add_log(f"TIC TAC TOE RESULT <- {winner}")
             return
 
@@ -391,25 +291,18 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
             self.ttt_finished = True
             self.ttt_selected_pending = False
             self.ttt_rematch_button.disabled = False
-            if winner == "ALI":
-                self.ttt_status.text = "ALI WINS!"
-            elif winner == "AVA":
-                self.ttt_status.text = "AVA WINS!"
-            else:
-                self.ttt_status.text = "DRAW!"
+            self.ttt_status.text = "ALI WINS!" if winner == "ALI" else ("AVA WINS!" if winner == "AVA" else "DRAW!")
             self._ttt_render_board()
             self.add_log(f"TIC TAC TOE FINISHED <- {winner}")
             return
 
-        if message == "TTT_SCORE":
-            if len(parts) >= 3:
-                try:
-                    self.ttt_ali_score = int(parts[1])
-                    self.ttt_ava_score = int(parts[2])
-                    self._ttt_render_board()
-                except Exception:
-                    pass
-            return
+        if message == "TTT_SCORE" and len(parts) >= 3:
+            try:
+                self.ttt_ali_score = int(parts[1])
+                self.ttt_ava_score = int(parts[2])
+                self._ttt_render_board()
+            except Exception:
+                pass
 
     def select_game(self, game_id, _button_event=False):
         normalized = str(game_id).strip().upper()
@@ -425,15 +318,9 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
             self.ttt_status.text = "GAME LOAD FAILED"
             self.add_log("TIC TAC TOE GAME_LOAD FAILED")
             return
-
         self.add_log("GAME LOAD -> TIC_TAC_TOE")
 
-        if not self.ble.write_data("TTT_REMATCH"):
-            self.ttt_status.text = "GAME START FAILED"
-            self.add_log("TIC TAC TOE INITIALIZATION FAILED")
-            return
-
-        self.add_log("TTT INIT -> TTT_REMATCH")
+        # Firmware initializes the game on GAME_LOAD. No duplicate REMATCH.
 
     def handle_game_data(self, text):
         if self.game_id == GAME_ID and str(text).strip().upper().startswith("TTT_"):
@@ -462,46 +349,26 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
 
     def start_automatic_scan(self, *args):
         self._ttt_hide()
-
-        # The finding screen intentionally hides CONNECT AVA while scanning.
-        # Once the scanner finds AVA, automatically continue into GATT instead
-        # of leaving the app stuck at the "AVA FOUND" log line.
         result = original_start_automatic_scan(self, *args)
-
         self._ttt_auto_connecting = False
 
         def watch_for_ava(_dt):
             if self._ttt_auto_connecting:
                 return False
-
             try:
                 if self.ble.has_ava():
                     self._ttt_auto_connecting = True
-                    self.add_log(
-                        "AUTO CONNECT: AVA FOUND -> STARTING GATT CONNECTION..."
-                    )
-                    self.finding_label.text = "Connecting to AVA"
-                    self.connect_button.disabled = True
-                    self.connect_ava()
+                    self.add_log("AVA FOUND -> AUTO CONNECT")
+                    self.ble.connect_ava()
                     return False
-
-                if not self.ble.scanning:
-                    self.add_log(
-                        "AUTO CONNECT: SCAN ENDED WITHOUT AVA."
-                    )
-                    return False
-
             except Exception as exc:
-                self.add_log(
-                    f"AUTO CONNECT WATCH ERROR: {exc}"
-                )
-                return False
-
+                self.add_log(f"AUTO CONNECT WATCH ERROR: {exc}")
             return True
 
-        Clock.schedule_interval(watch_for_ava, 0.10)
+        Clock.schedule_interval(watch_for_ava, 0.5)
         return result
 
+    AvaPetApp.build = build
     AvaPetApp._ttt_build_page = _ttt_build_page
     AvaPetApp._ttt_hide = _ttt_hide
     AvaPetApp._ttt_show = _ttt_show
@@ -510,8 +377,6 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
     AvaPetApp.ttt_select_cell = ttt_select_cell
     AvaPetApp.ttt_rematch = ttt_rematch
     AvaPetApp._ttt_handle_data = _ttt_handle_data
-
-    AvaPetApp.build = build
     AvaPetApp.select_game = select_game
     AvaPetApp.handle_game_data = handle_game_data
     AvaPetApp.back_to_games = back_to_games
