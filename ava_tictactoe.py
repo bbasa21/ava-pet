@@ -379,6 +379,20 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         self._ttt_hide()
         return original_start_automatic_scan(self, *args)
 
+    # Install every helper used through self.*. The previous version only
+    # installed the public wrappers, leaving _ttt_build_page and the other
+    # helpers as local functions inside install_tictactoe(). That caused the
+    # startup crash: AttributeError: 'AvaPetApp' object has no attribute
+    # '_ttt_build_page'.
+    AvaPetApp._ttt_build_page = _ttt_build_page
+    AvaPetApp._ttt_hide = _ttt_hide
+    AvaPetApp._ttt_show = _ttt_show
+    AvaPetApp._ttt_reset_visuals = _ttt_reset_visuals
+    AvaPetApp._ttt_render_board = _ttt_render_board
+    AvaPetApp.ttt_select_cell = ttt_select_cell
+    AvaPetApp.ttt_rematch = ttt_rematch
+    AvaPetApp._ttt_handle_data = _ttt_handle_data
+
     AvaPetApp.build = build
     AvaPetApp.select_game = select_game
     AvaPetApp.handle_game_data = handle_game_data
