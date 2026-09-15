@@ -15,7 +15,7 @@ def _hide(page):
         page.disabled = True
 
 
-def install_tictactoe(AvaPetApp):
+def install_tictactoe(AvaPetApp, font_name="Roboto"):
     """Install the Tic-Tac-Toe UI/controller on the existing app.
 
     The ESP32 remains the sole game brain. This module only renders
@@ -32,6 +32,7 @@ def install_tictactoe(AvaPetApp):
     original_start_automatic_scan = AvaPetApp.start_automatic_scan
 
     def build(self):
+        self.ttt_font_name = font_name
         root = original_build(self)
         self._ttt_build_page()
         return root
@@ -41,7 +42,7 @@ def install_tictactoe(AvaPetApp):
 
         self.ttt_title = Label(
             text="TIC TAC TOE",
-            font_name=FONT_NAME,
+            font_name=self.ttt_font_name,
             font_size=dp(24),
             color=(1, 1, 1, 1),
             size_hint=(1, None),
@@ -52,7 +53,7 @@ def install_tictactoe(AvaPetApp):
 
         self.ttt_score = Label(
             text="ALI: 0     AVA: 0",
-            font_name=FONT_NAME,
+            font_name=self.ttt_font_name,
             font_size=dp(14),
             color=(1, 1, 1, 1),
             size_hint=(1, None),
@@ -63,7 +64,7 @@ def install_tictactoe(AvaPetApp):
 
         self.ttt_status = Label(
             text="WAITING...",
-            font_name=FONT_NAME,
+            font_name=self.ttt_font_name,
             font_size=dp(14),
             color=(1, 1, 1, 1),
             size_hint=(0.94, None),
@@ -91,7 +92,7 @@ def install_tictactoe(AvaPetApp):
         for index in range(9):
             button = Button(
                 text="",
-                font_name=FONT_NAME,
+                font_name=self.ttt_font_name,
                 font_size=dp(30),
                 background_normal="",
                 background_down="",
@@ -108,7 +109,7 @@ def install_tictactoe(AvaPetApp):
 
         self.ttt_rematch_button = Button(
             text="REMATCH",
-            font_name=FONT_NAME,
+            font_name=self.ttt_font_name,
             font_size=dp(13),
             size_hint=(None, None),
             size=(dp(145), dp(42)),
@@ -125,7 +126,7 @@ def install_tictactoe(AvaPetApp):
 
         self.ttt_back_button = Button(
             text="BACK TO GAMES",
-            font_name=FONT_NAME,
+            font_name=self.ttt_font_name,
             font_size=dp(12),
             size_hint=(None, None),
             size=(dp(145), dp(42)),
@@ -176,6 +177,8 @@ def install_tictactoe(AvaPetApp):
         self.ttt_turn = "ALI"
         self.ttt_finished = False
         self.ttt_selected_pending = False
+        self.ttt_ali_score = 0
+        self.ttt_ava_score = 0
         self.ttt_status.text = "STARTING GAME..."
         self.ttt_rematch_button.disabled = True
         self._ttt_render_board()
@@ -320,10 +323,6 @@ def install_tictactoe(AvaPetApp):
                     self._ttt_render_board()
                 except Exception:
                     pass
-            return
-
-        if message == "GAME_STARTED" and self.game_id == GAME_ID:
-            self.ttt_status.text = "WAITING FOR BOARD..."
             return
 
     def select_game(self, game_id, _button_event=False):
