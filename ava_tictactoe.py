@@ -386,3 +386,5 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
     AvaPetApp.show_settings = show_settings
     AvaPetApp.show_ava_home = show_ava_home
     AvaPetApp.start_automatic_scan = start_automatic_scan
+
+# End of AVA Tic-Tac-Toe controller module.
