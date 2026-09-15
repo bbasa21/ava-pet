@@ -32,60 +32,33 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
 
     def _ttt_build_page(self):
         self.ttt_page = FloatLayout(size_hint=(1, 1))
-
-        self.ttt_title = Label(text="TIC TAC TOE", font_name=self.ttt_font_name,
-            font_size=dp(23), color=(1,1,1,1), size_hint=(1,None), height=dp(42),
-            pos_hint={"center_x":0.5,"top":0.965}, bold=True)
+        self.ttt_title = Label(text="TIC TAC TOE", font_name=self.ttt_font_name, font_size=dp(23), color=(1,1,1,1), size_hint=(1,None), height=dp(42), pos_hint={"center_x":0.5,"top":0.965}, bold=True)
         self.ttt_page.add_widget(self.ttt_title)
-
-        self.ttt_subtitle = Label(text="ALI  X     •     AVA  O", font_name=self.ttt_font_name,
-            font_size=dp(10), color=(0.72,0.62,0.82,1), size_hint=(1,None), height=dp(24),
-            pos_hint={"center_x":0.5,"top":0.905})
+        self.ttt_subtitle = Label(text="ALI  X     •     AVA  O", font_name=self.ttt_font_name, font_size=dp(10), color=(0.72,0.62,0.82,1), size_hint=(1,None), height=dp(24), pos_hint={"center_x":0.5,"top":0.905})
         self.ttt_page.add_widget(self.ttt_subtitle)
-
-        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=self.ttt_font_name,
-            font_size=dp(14), color=(1,1,1,1), size_hint=(1,None), height=dp(40),
-            pos_hint={"center_x":0.5,"top":0.865})
+        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=self.ttt_font_name, font_size=dp(14), color=(1,1,1,1), size_hint=(1,None), height=dp(40), pos_hint={"center_x":0.5,"top":0.865})
         self.ttt_page.add_widget(self.ttt_score)
-
-        self.ttt_status = Label(text="WAITING...", font_name=self.ttt_font_name,
-            font_size=dp(13), color=(0.93,0.86,1,1), size_hint=(0.92,None), height=dp(34),
-            pos_hint={"center_x":0.5,"top":0.795}, halign="center", valign="middle", bold=True)
+        self.ttt_status = Label(text="WAITING...", font_name=self.ttt_font_name, font_size=dp(13), color=(0.93,0.86,1,1), size_hint=(0.92,None), height=dp(34), pos_hint={"center_x":0.5,"top":0.795}, halign="center", valign="middle", bold=True)
         self.ttt_status.bind(size=lambda inst,val:setattr(inst,"text_size",val))
         self.ttt_page.add_widget(self.ttt_status)
-
-        self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(7), padding=[dp(9),dp(9)],
-            size_hint=(0.80,None), height=dp(286), pos_hint={"center_x":0.5,"center_y":0.505})
+        self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(7), padding=[dp(9),dp(9)], size_hint=(0.80,None), height=dp(286), pos_hint={"center_x":0.5,"center_y":0.505})
         self.ttt_page.add_widget(self.ttt_board)
-
         self.ttt_buttons=[]
         for index in range(9):
-            button=Button(text="", font_name=self.ttt_font_name, font_size=dp(34), bold=True,
-                background_normal="", background_down="", background_color=(0.17,0.055,0.29,1),
-                color=(1,1,1,1), border=(0,0,0,0))
+            button=Button(text="", font_name=self.ttt_font_name, font_size=dp(34), bold=True, background_normal="", background_down="", background_color=(0.17,0.055,0.29,1), color=(1,1,1,1), border=(0,0,0,0))
             button.bind(on_release=lambda _,idx=index:self.ttt_select_cell(idx))
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
-
-        self.ttt_rematch_button=Button(text="REMATCH", font_name=self.ttt_font_name,
-            font_size=dp(12), bold=True, size_hint=(None,None), size=(dp(142),dp(42)),
-            pos_hint={"center_x":0.30,"y":0.085}, background_normal="", background_down="",
-            background_color=(0.45,0.12,0.75,1), color=(1,1,1,1), border=(0,0,0,0))
+        self.ttt_rematch_button=Button(text="REMATCH", font_name=self.ttt_font_name, font_size=dp(12), bold=True, size_hint=(None,None), size=(dp(142),dp(42)), pos_hint={"center_x":0.30,"y":0.085}, background_normal="", background_down="", background_color=(0.45,0.12,0.75,1), color=(1,1,1,1), border=(0,0,0,0))
         self.ttt_rematch_button.bind(on_release=self.ttt_rematch)
         self.ttt_page.add_widget(self.ttt_rematch_button)
-
-        self.ttt_back_button=Button(text="BACK TO GAMES", font_name=self.ttt_font_name,
-            font_size=dp(11), bold=True, size_hint=(None,None), size=(dp(142),dp(42)),
-            pos_hint={"center_x":0.70,"y":0.085}, background_normal="", background_down="",
-            background_color=(0.18,0.07,0.30,1), color=(0.82,0.76,0.88,1), border=(0,0,0,0))
+        self.ttt_back_button=Button(text="BACK TO GAMES", font_name=self.ttt_font_name, font_size=dp(11), bold=True, size_hint=(None,None), size=(dp(142),dp(42)), pos_hint={"center_x":0.70,"y":0.085}, background_normal="", background_down="", background_color=(0.18,0.07,0.30,1), color=(0.82,0.76,0.88,1), border=(0,0,0,0))
         self.ttt_back_button.bind(on_release=self.back_to_games)
         self.ttt_page.add_widget(self.ttt_back_button)
-
         self.ttt_rematch_button.disabled=True
         self.ttt_page.opacity=0
         self.ttt_page.disabled=True
         self.root_layout.add_widget(self.ttt_page)
-
         self.ttt_board_state="---------"
         self.ttt_turn="ALI"
         self.ttt_finished=False
@@ -103,8 +76,8 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
         self.connect_button.disabled=True
         self.ttt_page.opacity=1
         self.ttt_page.disabled=False
-        self.root_layout.remove_widget(self.ttt_page)
-        self.root_layout.add_widget(self.ttt_page)
+        if self.ttt_page.parent is not self.root_layout:
+            self.root_layout.add_widget(self.ttt_page)
 
     def _ttt_reset_visuals(self):
         self.ttt_board_state="---------"
@@ -162,32 +135,31 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
             if len(parts)<3:return
             board=parts[1].strip().upper(); turn=parts[2].strip().upper()
             if len(board)!=9 or any(c not in "XO-" for c in board):
-                self.add_log(f"TTT INVALID BOARD <- {text}"); return
+                self.add_log(f"TTT INVALID BOARD <- {text}");return
             self.ttt_board_state=board
             self.ttt_turn=turn if turn in ("ALI","AVA") else "ALI"
-            self.ttt_selected_pending=False; self.ttt_finished=False; self.ttt_rematch_button.disabled=True
+            self.ttt_selected_pending=False;self.ttt_finished=False;self.ttt_rematch_button.disabled=True
             self.ttt_status.text="YOUR TURN" if self.ttt_turn=="ALI" else "AVA THINKING..."
-            self._ttt_render_board(); return
+            self._ttt_render_board();return
         if message=="TTT_MOVE":
             if len(parts)>=3:self.add_log(f"TIC TAC TOE MOVE <- {parts[1].strip().upper()}|{parts[2].strip()}")
             return
         if message=="TTT_MOVE_ACCEPTED":
-            self.ttt_selected_pending=False; self.add_log(f"TIC TAC TOE MOVE ACCEPTED <- {text}"); return
+            self.ttt_selected_pending=False;self.add_log(f"TIC TAC TOE MOVE ACCEPTED <- {text}");return
         if message=="TTT_MOVE_REJECTED":
-            self.ttt_selected_pending=False; self.ttt_status.text="MOVE REJECTED"; self._ttt_render_board(); self.add_log(f"TIC TAC TOE MOVE REJECTED <- {text}"); return
+            self.ttt_selected_pending=False;self.ttt_status.text="MOVE REJECTED";self._ttt_render_board();self.add_log(f"TIC TAC TOE MOVE REJECTED <- {text}");return
         if message=="TTT_RESULT":
             winner=parts[1].strip().upper() if len(parts)>1 else "DRAW"
             self.ttt_status.text="ALI WINS!" if winner=="ALI" else ("AVA WINS!" if winner=="AVA" else "DRAW!")
-            self.add_log(f"TIC TAC TOE RESULT <- {winner}"); return
+            self.add_log(f"TIC TAC TOE RESULT <- {winner}");return
         if message=="TTT_FINISHED":
             winner=parts[1].strip().upper() if len(parts)>1 else "DRAW"
-            self.ttt_finished=True; self.ttt_selected_pending=False; self.ttt_rematch_button.disabled=False
+            self.ttt_finished=True;self.ttt_selected_pending=False;self.ttt_rematch_button.disabled=False
             self.ttt_status.text="ALI WINS!" if winner=="ALI" else ("AVA WINS!" if winner=="AVA" else "DRAW!")
-            self._ttt_render_board(); self.add_log(f"TIC TAC TOE FINISHED <- {winner}"); return
+            self._ttt_render_board();self.add_log(f"TIC TAC TOE FINISHED <- {winner}");return
         if message=="TTT_SCORE" and len(parts)>=3:
-            try:
-                self.ttt_ali_score=int(parts[1]); self.ttt_ava_score=int(parts[2]); self._ttt_render_board()
-            except Exception:pass
+            try:self.ttt_ali_score=int(parts[1]);self.ttt_ava_score=int(parts[2]);self._ttt_render_board()
+            except (TypeError,ValueError):pass
 
     def select_game(self,game_id,_button_event=False):
         normalized=str(game_id).strip().upper()
@@ -204,13 +176,13 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
 
     def handle_game_data(self,text):
         if self.game_id==GAME_ID and str(text).strip().upper().startswith("TTT_"):
-            self._ttt_handle_data(text); return
+            self._ttt_handle_data(text);return
         return original_handle_game_data(self,text)
 
     def back_to_games(self,*_):
         if getattr(self,"game_id","")==GAME_ID and getattr(self,"ttt_page",None) is not None:
             self.ble.write_command("GAME_END")
-            self._ttt_hide(); self.game_id=None
+            self._ttt_hide();self.game_id=None
         return original_back_to_games(self)
 
     def show_my_games(self,*args):self._ttt_hide();return original_show_my_games(self,*args)
@@ -227,8 +199,14 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
                 if self.ble.has_ava():
                     self._ttt_auto_connecting=True
                     self.add_log("AVA FOUND -> AUTO CONNECT")
-                    self.ble.connect_ava(); return False
-            except Exception as exc:self.add_log(f"AUTO CONNECT WATCH ERROR: {exc}")
+                    if self.ble.connect():
+                        self.add_log("AUTO CONNECT REQUEST SENT")
+                    else:
+                        self.add_log("AUTO CONNECT REQUEST FAILED")
+                        self._ttt_auto_connecting=False
+            except Exception as exc:
+                self.add_log(f"AUTO CONNECT WATCH ERROR: {exc}")
+                self._ttt_auto_connecting=False
             return True
         Clock.schedule_interval(watch_for_ava,0.5)
         return result
