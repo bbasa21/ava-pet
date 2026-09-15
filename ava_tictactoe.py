@@ -340,9 +340,6 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
 
         self.add_log("GAME LOAD -> TIC_TAC_TOE")
 
-        # GAME_LOAD identifies the game on ESP32. The existing BLE game
-        # command flow has no separate TTT start state, so use the TTT
-        # rematch command to initialize the first round in the ESP32 engine.
         if not self.ble.write_data("TTT_REMATCH"):
             self.ttt_status.text = "GAME START FAILED"
             self.add_log("TIC TAC TOE INITIALIZATION FAILED")
@@ -377,13 +374,46 @@ def install_tictactoe(AvaPetApp, font_name="Roboto"):
 
     def start_automatic_scan(self, *args):
         self._ttt_hide()
-        return original_start_automatic_scan(self, *args)
 
-    # Install every helper used through self.*. The previous version only
-    # installed the public wrappers, leaving _ttt_build_page and the other
-    # helpers as local functions inside install_tictactoe(). That caused the
-    # startup crash: AttributeError: 'AvaPetApp' object has no attribute
-    # '_ttt_build_page'.
+        # The finding screen intentionally hides CONNECT AVA while scanning.
+        # Once the scanner finds AVA, automatically continue into GATT instead
+        # of leaving the app stuck at the "AVA FOUND" log line.
+        result = original_start_automatic_scan(self, *args)
+
+        self._ttt_auto_connecting = False
+
+        def watch_for_ava(_dt):
+            if self._ttt_auto_connecting:
+                return False
+
+            try:
+                if self.ble.has_ava():
+                    self._ttt_auto_connecting = True
+                    self.add_log(
+                        "AUTO CONNECT: AVA FOUND -> STARTING GATT CONNECTION..."
+                    )
+                    self.finding_label.text = "Connecting to AVA"
+                    self.connect_button.disabled = True
+                    self.connect_ava()
+                    return False
+
+                if not self.ble.scanning:
+                    self.add_log(
+                        "AUTO CONNECT: SCAN ENDED WITHOUT AVA."
+                    )
+                    return False
+
+            except Exception as exc:
+                self.add_log(
+                    f"AUTO CONNECT WATCH ERROR: {exc}"
+                )
+                return False
+
+            return True
+
+        Clock.schedule_interval(watch_for_ava, 0.10)
+        return result
+
     AvaPetApp._ttt_build_page = _ttt_build_page
     AvaPetApp._ttt_hide = _ttt_hide
     AvaPetApp._ttt_show = _ttt_show
