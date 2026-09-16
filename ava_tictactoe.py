@@ -120,6 +120,12 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.add_log("GAME LOAD -> TIC_TAC_TOE")
 
     def ttt_select_cell(self, index):
+        self.add_log(
+        f"TTT TOUCH -> cell={index} | "
+        f"turn={self.ttt_turn} | "
+        f"finished={self.ttt_finished} | "
+        f"pending={self.ttt_selected_pending}"
+        )
         if self.ttt_finished or self.ttt_turn != "ALI" or self.ttt_selected_pending:
             return
         if index < 0 or index >= 9 or self.ttt_board_state[index] != "-":
