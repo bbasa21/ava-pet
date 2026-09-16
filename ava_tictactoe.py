@@ -13,6 +13,10 @@ def install_tictactoe(app_class, font_name="Orbitron"):
     original_start_automatic_scan = app_class.start_automatic_scan
     original_handle_game_data = app_class.handle_game_data
     original_select_game = app_class.select_game
+    original_back_to_games = app_class.back_to_games
+    original_show_my_games = app_class.show_my_games
+    original_show_settings = app_class.show_settings
+    original_show_ava_home = app_class.show_ava_home
 
     def build(self):
         root = original_build(self)
@@ -26,8 +30,8 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .49})
         self.ttt_buttons = []
         for index in range(9):
-            button = Button(text="", font_name=font_name, font_size=dp(42), background_normal="", background_down="", background_color=(.17, .055, .29, 1), color=(1, 1, 1, 1), disabled=False)
-            button.bind(on_release=lambda btn, idx=index: self.ttt_select_cell(idx))
+            button = Button(text="", font_name=font_name, font_size=dp(42), background_normal="", background_down="", background_color=(.17, .055, .29, 1), color=(1, 1, 1, 1))
+            button.bind(on_release=lambda _button, idx=index: self.ttt_select_cell(idx))
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
 
@@ -36,13 +40,9 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_rematch.bind(on_release=self.ttt_request_rematch)
         self.ttt_back.bind(on_release=self.back_to_games)
 
-        self.ttt_page.add_widget(self.ttt_title)
-        self.ttt_page.add_widget(self.ttt_subtitle)
-        self.ttt_page.add_widget(self.ttt_score)
-        self.ttt_page.add_widget(self.ttt_board)
-        self.ttt_page.add_widget(self.ttt_status)
-        self.ttt_page.add_widget(self.ttt_rematch)
-        self.ttt_page.add_widget(self.ttt_back)
+        for widget in (self.ttt_title, self.ttt_subtitle, self.ttt_score, self.ttt_board, self.ttt_status, self.ttt_rematch, self.ttt_back):
+            self.ttt_page.add_widget(widget)
+
         root.add_widget(self.ttt_page)
         self.ttt_page.opacity = 0
         self.ttt_page.disabled = True
@@ -53,15 +53,31 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_selected_pending = False
         self.ttt_ali_score = 0
         self.ttt_ava_score = 0
+        self._ttt_auto_connecting = False
         return root
 
-    def _ttt_show(self):
-        self.ttt_page.opacity = 1
-        self.ttt_page.disabled = False
-
     def _ttt_hide(self):
+        if not hasattr(self, "ttt_page"):
+            return
         self.ttt_page.opacity = 0
         self.ttt_page.disabled = True
+
+    def _ttt_hide_other_pages(self):
+        pages = ("finding_page", "home_page", "games_page", "settings_page", "math_page", "logic_page")
+        for name in pages:
+            page = getattr(self, name, None)
+            if page is not None:
+                page.opacity = 0
+                page.disabled = True
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+
+    def _ttt_show(self):
+        self._ttt_hide_other_pages()
+        self.ttt_page.opacity = 1
+        self.ttt_page.disabled = False
+        self.root_layout.remove_widget(self.ttt_page)
+        self.root_layout.add_widget(self.ttt_page)
 
     def _ttt_render_board(self):
         for index, button in enumerate(self.ttt_buttons):
@@ -72,20 +88,6 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             button.color = (1, 1, 1, 1)
         self.ttt_score.text = f"ALI  {self.ttt_ali_score}     —     {self.ttt_ava_score}  AVA"
 
-    def select_game(self, game_id, _button_event=False):
-        normalized = str(game_id).strip().upper()
-        if normalized != GAME_ID:
-            return original_select_game(self, game_id, _button_event)
-        self.game_id = GAME_ID
-        self.games_status.text = "TIC TAC TOE STARTING"
-        self._ttt_reset_visuals()
-        self._ttt_show()
-        if not self.ble.write_command("GAME_LOAD|TIC_TAC_TOE"):
-            self.ttt_status.text = "GAME LOAD FAILED"
-            self.add_log("TIC TAC TOE GAME_LOAD FAILED")
-            return
-        self.add_log("GAME LOAD -> TIC_TAC_TOE")
-
     def _ttt_reset_visuals(self):
         self.ttt_board_state = ["-"] * 9
         self.ttt_turn = "ALI"
@@ -95,21 +97,48 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_rematch.disabled = True
         self._ttt_render_board()
 
+    def select_game(self, game_id, _button_event=False):
+        normalized = str(game_id).strip().upper()
+        if normalized != GAME_ID:
+            self._ttt_hide()
+            return original_select_game(self, game_id, _button_event)
+
+        self.game_id = GAME_ID
+        self._ttt_reset_visuals()
+        self._ttt_show()
+        self.games_status.text = "TIC TAC TOE STARTING"
+
+        try:
+            sent = self.ble.write_command("GAME_LOAD|TIC_TAC_TOE")
+        except Exception as exc:
+            sent = False
+            self.add_log(f"TIC TAC TOE GAME LOAD ERROR -> {exc}")
+
+        if not sent:
+            self.ttt_status.text = "GAME LOAD FAILED"
+            self.add_log("TIC TAC TOE GAME_LOAD FAILED")
+            return
+
+        self.add_log("GAME LOAD -> TIC_TAC_TOE")
+
     def ttt_select_cell(self, index):
         if self.ttt_finished or self.ttt_turn != "ALI" or self.ttt_selected_pending:
             return
         if index < 0 or index >= 9 or self.ttt_board_state[index] != "-":
             return
+
         self.ttt_selected_pending = True
         self.ttt_status.text = "AVA THINKING..."
         self._ttt_render_board()
         command = f"TTT_MOVE|ALI|{index}"
         self.add_log(f"TIC TAC TOE MOVE -> {command}")
+
         try:
             sent = self.ble.write_data(command)
         except Exception as exc:
             sent = False
             self.add_log(f"TIC TAC TOE WRITE ERROR -> {exc}")
+
         if not sent:
             self.ttt_selected_pending = False
             self.ttt_status.text = "MOVE SEND FAILED"
@@ -124,7 +153,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             sent = self.ble.write_data("TTT_REMATCH")
         except Exception as exc:
             sent = False
-            self.add_log(f"TIC TAC TOE REMATCH ERROR: {exc}")
+            self.add_log(f"TIC TAC TOE REMATCH ERROR -> {exc}")
         if not sent:
             self.ttt_selected_pending = False
             self.ttt_status.text = "REMATCH FAILED"
@@ -132,13 +161,15 @@ def install_tictactoe(app_class, font_name="Orbitron"):
     def _ttt_handle_data(self, text):
         value = str(text).strip()
         parts = value.split("|")
-        kind = parts[0].upper() if parts else ""
+        kind = parts[0].strip().upper() if parts else ""
+
         if kind == "TTT_STATE" and len(parts) >= 3:
             board = parts[1].strip().upper()
             turn = parts[2].strip().upper()
             if len(board) != 9 or any(char not in "XO-" for char in board):
                 self.add_log(f"TIC TAC TOE INVALID STATE -> {value}")
                 return
+
             self.ttt_board_state = list(board)
             if turn in ("X", "ALI"):
                 self.ttt_turn = "ALI"
@@ -147,27 +178,33 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             else:
                 self.add_log(f"TIC TAC TOE INVALID TURN -> {value}")
                 return
+
             self.ttt_selected_pending = False
             if not self.ttt_finished:
                 self.ttt_status.text = "YOUR TURN" if self.ttt_turn == "ALI" else "AVA THINKING..."
             self._ttt_render_board()
             return
+
         if kind == "TTT_MOVE_ACCEPTED":
             self.add_log(f"TIC TAC TOE ACCEPTED -> {value}")
             return
+
         if kind == "TTT_MOVE_REJECTED":
             self.ttt_selected_pending = False
-            reason = parts[1] if len(parts) > 1 else "UNKNOWN"
+            reason = parts[1].strip() if len(parts) > 1 else "UNKNOWN"
             self.ttt_status.text = f"MOVE REJECTED: {reason}"
             self._ttt_render_board()
             return
+
         if kind == "TTT_MOVE":
             self.add_log(f"TIC TAC TOE AVA MOVE -> {value}")
             return
+
         if kind == "TTT_RESULT":
             winner = parts[1].strip().upper() if len(parts) > 1 else "DRAW"
             self.ttt_status.text = "YOU WIN!" if winner == "ALI" else ("AVA WINS!" if winner == "AVA" else "DRAW!")
             return
+
         if kind == "TTT_FINISHED":
             winner = parts[1].strip().upper() if len(parts) > 1 else "DRAW"
             self.ttt_finished = True
@@ -176,11 +213,13 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             self.ttt_status.text = "YOU WIN!" if winner == "ALI" else ("AVA WINS!" if winner == "AVA" else "DRAW!")
             self._ttt_render_board()
             return
+
         if kind == "TTT_SCORE" and len(parts) >= 3:
             try:
                 self.ttt_ali_score = int(parts[1])
                 self.ttt_ava_score = int(parts[2])
             except ValueError:
+                self.add_log(f"TIC TAC TOE INVALID SCORE -> {value}")
                 return
             self._ttt_render_board()
 
@@ -207,20 +246,43 @@ def install_tictactoe(app_class, font_name="Orbitron"):
                     else:
                         self.add_log("AUTO CONNECT REQUEST FAILED")
                         self._ttt_auto_connecting = False
+                        return True
             except Exception as exc:
                 self.add_log(f"AUTO CONNECT WATCH ERROR: {exc}")
                 self._ttt_auto_connecting = False
+                return True
             return True
 
         Clock.schedule_interval(watch_for_ava, 0.5)
         return result
 
+    def back_to_games(self, *_):
+        self._ttt_hide()
+        return original_back_to_games(self)
+
+    def show_my_games(self, *_):
+        self._ttt_hide()
+        return original_show_my_games(self)
+
+    def show_settings(self, *_):
+        self._ttt_hide()
+        return original_show_settings(self)
+
+    def show_ava_home(self, *_):
+        self._ttt_hide()
+        return original_show_ava_home(self)
+
     app_class.build = build
     app_class.select_game = select_game
     app_class.handle_game_data = handle_game_data
     app_class.start_automatic_scan = start_automatic_scan
+    app_class.back_to_games = back_to_games
+    app_class.show_my_games = show_my_games
+    app_class.show_settings = show_settings
+    app_class.show_ava_home = show_ava_home
     app_class._ttt_show = _ttt_show
     app_class._ttt_hide = _ttt_hide
+    app_class._ttt_hide_other_pages = _ttt_hide_other_pages
     app_class._ttt_render_board = _ttt_render_board
     app_class._ttt_reset_visuals = _ttt_reset_visuals
     app_class.ttt_select_cell = ttt_select_cell
