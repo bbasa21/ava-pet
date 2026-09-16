@@ -76,8 +76,6 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self._ttt_hide_other_pages()
         self.ttt_page.opacity = 1
         self.ttt_page.disabled = False
-        self.root_layout.remove_widget(self.ttt_page)
-        self.root_layout.add_widget(self.ttt_page)
 
     def _ttt_render_board(self):
         for index, button in enumerate(self.ttt_buttons):
