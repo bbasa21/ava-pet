@@ -28,7 +28,6 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "top": .84})
         self.ttt_status = Label(text="YOUR TURN", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .15})
 
-        # Keep the board clear of the score/status labels on short Android screens.
         self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .45})
         self.ttt_buttons = []
         for index in range(9):
@@ -37,15 +36,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
 
-        # Dedicated touch layer for the board.
-        # This sits above the GridLayout and directly translates a touch
-        # into the corresponding cell. It avoids relying on Button/GridLayout
-        # touch dispatch when another Kivy widget is in the event chain.
-        self.ttt_touch_layer = Widget(
-            size=self.ttt_board.size,
-            size_hint=(None, None),
-            pos=self.ttt_board.pos,
-        )
+        self.ttt_touch_layer = Widget(size=self.ttt_board.size, size_hint=(None, None), pos=self.ttt_board.pos)
 
         def sync_ttt_touch_layer(_instance, _value):
             self.ttt_touch_layer.size = self.ttt_board.size
@@ -58,15 +49,11 @@ def install_tictactoe(app_class, font_name="Orbitron"):
                 return False
             if not self.ttt_touch_layer.collide_point(*touch.pos):
                 return False
-
-            # Use the real buttons for hit-testing so padding/spacing remain
-            # exactly aligned with what is displayed on screen.
             for index, button in enumerate(self.ttt_buttons):
                 if button.collide_point(*touch.pos):
                     self.add_log(f"TTT TOUCH LAYER -> cell={index}")
                     self.ttt_select_cell(index)
                     return True
-
             return True
 
         self.ttt_touch_layer.bind(on_touch_down=ttt_touch_layer_down)
@@ -110,6 +97,10 @@ def install_tictactoe(app_class, font_name="Orbitron"):
 
     def _ttt_show(self):
         self._ttt_hide_other_pages()
+        # TTT must be the topmost sibling so its board receives Android touches.
+        if self.ttt_page.parent is self.root_layout:
+            self.root_layout.remove_widget(self.ttt_page)
+        self.root_layout.add_widget(self.ttt_page)
         self.ttt_page.opacity = 1
         self.ttt_page.disabled = False
 
@@ -193,7 +184,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             sent = self.ble.write_data("TTT_REMATCH")
         except Exception as exc:
             sent = False
-            self.add_log(f"TIC TAC TOE REMATCH ERROR -> {exc}")
+            self.add_log(f"TIC TAC TOE REMATCH ERROR: {exc}")
         if not sent:
             self.ttt_selected_pending = False
             self.ttt_status.text = "REMATCH FAILED"
