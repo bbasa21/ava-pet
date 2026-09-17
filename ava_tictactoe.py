@@ -43,6 +43,19 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         for widget in (self.ttt_title, self.ttt_subtitle, self.ttt_score, self.ttt_board, self.ttt_status, self.ttt_rematch, self.ttt_back):
             self.ttt_page.add_widget(widget)
 
+        def ttt_page_touch(_page, touch):
+            if self.ttt_page.opacity <= 0 or self.ttt_page.disabled:
+                return False
+
+            for index, button in enumerate(self.ttt_buttons):
+                if button.collide_point(*touch.pos):
+                    self.ttt_select_cell(index)
+                    return True
+
+            return False
+
+        self.ttt_page.bind(on_touch_down=ttt_page_touch)
+
         root.add_widget(self.ttt_page)
         self.ttt_page.opacity = 0
         self.ttt_page.disabled = True
@@ -121,10 +134,10 @@ def install_tictactoe(app_class, font_name="Orbitron"):
 
     def ttt_select_cell(self, index):
         self.add_log(
-        f"TTT TOUCH -> cell={index} | "
-        f"turn={self.ttt_turn} | "
-        f"finished={self.ttt_finished} | "
-        f"pending={self.ttt_selected_pending}"
+            f"TTT TOUCH -> cell={index} | "
+            f"turn={self.ttt_turn} | "
+            f"finished={self.ttt_finished} | "
+            f"pending={self.ttt_selected_pending}"
         )
         if self.ttt_finished or self.ttt_turn != "ALI" or self.ttt_selected_pending:
             return
