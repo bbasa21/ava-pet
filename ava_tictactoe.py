@@ -210,9 +210,10 @@ def install_tictactoe(app_class, font_name="Orbitron"):
                 self.add_log(f"TIC TAC TOE INVALID TURN -> {value}")
                 return
 
+            self.ttt_finished = False
             self.ttt_selected_pending = False
-            if not self.ttt_finished:
-                self.ttt_status.text = "YOUR TURN" if self.ttt_turn == "ALI" else "AVA THINKING..."
+            self.ttt_rematch.disabled = True
+            self.ttt_status.text = "YOUR TURN" if self.ttt_turn == "ALI" else "AVA THINKING..."
             self._ttt_render_board()
             return
 
