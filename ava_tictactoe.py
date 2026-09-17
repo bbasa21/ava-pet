@@ -22,12 +22,13 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         root = original_build(self)
 
         self.ttt_page = FloatLayout(size_hint=(1, 1))
-        self.ttt_title = Label(text="TIC TAC TOE", font_name=font_name, font_size=dp(24), size_hint=(1, None), height=dp(45), pos_hint={"center_x": .5, "top": .96})
-        self.ttt_subtitle = Label(text="ALI X  •  AVA O", font_name=font_name, font_size=dp(12), size_hint=(1, None), height=dp(30), pos_hint={"center_x": .5, "top": .89})
-        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "top": .82})
-        self.ttt_status = Label(text="YOUR TURN", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .14})
+        self.ttt_title = Label(text="TIC TAC TOE", font_name=font_name, font_size=dp(24), size_hint=(1, None), height=dp(45), pos_hint={"center_x": .5, "top": .99})
+        self.ttt_subtitle = Label(text="ALI X  •  AVA O", font_name=font_name, font_size=dp(12), size_hint=(1, None), height=dp(30), pos_hint={"center_x": .5, "top": .90})
+        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "top": .84})
+        self.ttt_status = Label(text="YOUR TURN", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .15})
 
-        self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .49})
+        # Keep the board clear of the score/status labels on short Android screens.
+        self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .45})
         self.ttt_buttons = []
         for index in range(9):
             button = Button(text="", font_name=font_name, font_size=dp(42), background_normal="", background_down="", background_color=(.17, .055, .29, 1), color=(1, 1, 1, 1))
