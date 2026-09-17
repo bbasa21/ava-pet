@@ -4,6 +4,7 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
+from kivy.uix.widget import Widget
 
 GAME_ID = "TIC_TAC_TOE"
 
@@ -36,26 +37,47 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
 
+        # Dedicated touch layer for the board.
+        # This sits above the GridLayout and directly translates a touch
+        # into the corresponding cell. It avoids relying on Button/GridLayout
+        # touch dispatch when another Kivy widget is in the event chain.
+        self.ttt_touch_layer = Widget(
+            size=self.ttt_board.size,
+            size_hint=(None, None),
+            pos=self.ttt_board.pos,
+        )
+
+        def sync_ttt_touch_layer(_instance, _value):
+            self.ttt_touch_layer.size = self.ttt_board.size
+            self.ttt_touch_layer.pos = self.ttt_board.pos
+
+        self.ttt_board.bind(pos=sync_ttt_touch_layer, size=sync_ttt_touch_layer)
+
+        def ttt_touch_layer_down(_layer, touch):
+            if self.ttt_page.opacity <= 0 or self.ttt_page.disabled:
+                return False
+            if not self.ttt_touch_layer.collide_point(*touch.pos):
+                return False
+
+            # Use the real buttons for hit-testing so padding/spacing remain
+            # exactly aligned with what is displayed on screen.
+            for index, button in enumerate(self.ttt_buttons):
+                if button.collide_point(*touch.pos):
+                    self.add_log(f"TTT TOUCH LAYER -> cell={index}")
+                    self.ttt_select_cell(index)
+                    return True
+
+            return True
+
+        self.ttt_touch_layer.bind(on_touch_down=ttt_touch_layer_down)
+
         self.ttt_rematch = Button(text="REMATCH", font_name=font_name, font_size=dp(12), size_hint=(None, None), size=(dp(135), dp(42)), pos_hint={"center_x": .37, "y": .055}, background_normal="", background_down="", background_color=(.25, .08, .42, 1))
         self.ttt_back = Button(text="BACK TO GAMES", font_name=font_name, font_size=dp(11), size_hint=(None, None), size=(dp(155), dp(42)), pos_hint={"center_x": .67, "y": .055}, background_normal="", background_down="", background_color=(.25, .08, .42, 1))
         self.ttt_rematch.bind(on_release=self.ttt_request_rematch)
         self.ttt_back.bind(on_release=self.back_to_games)
 
-        for widget in (self.ttt_title, self.ttt_subtitle, self.ttt_score, self.ttt_board, self.ttt_status, self.ttt_rematch, self.ttt_back):
+        for widget in (self.ttt_title, self.ttt_subtitle, self.ttt_score, self.ttt_board, self.ttt_touch_layer, self.ttt_status, self.ttt_rematch, self.ttt_back):
             self.ttt_page.add_widget(widget)
-
-        def ttt_page_touch(_page, touch):
-            if self.ttt_page.opacity <= 0 or self.ttt_page.disabled:
-                return False
-
-            for index, button in enumerate(self.ttt_buttons):
-                if button.collide_point(*touch.pos):
-                    self.ttt_select_cell(index)
-                    return True
-
-            return False
-
-        self.ttt_page.bind(on_touch_down=ttt_page_touch)
 
         root.add_widget(self.ttt_page)
         self.ttt_page.opacity = 0
