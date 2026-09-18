@@ -4380,7 +4380,6 @@ class AvaPetApp(App):
         self.settings_page.disabled = True
         self.display_page.opacity = 1
         self.display_page.disabled = False
-        self._send_display_data("SETTINGS_ENTER")
 
     def back_to_settings(self, *_):
         self.display_page.opacity = 0
