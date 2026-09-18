@@ -4403,25 +4403,55 @@ class AvaPetApp(App):
         self.display_brightness_label.text = f"BRIGHTNESS   {round(value * 100 / 255)}%"
 
     def display_brightness_released(self, slider, touch):
+        # Store the selected value locally. It is sent only when APPLY is pressed.
         if self.display_page.opacity > 0 and slider.collide_point(*touch.pos):
-            self._send_display_data(f"DISPLAY_SET|BRIGHTNESS|{int(round(slider.value))}")
+            value = int(round(slider.value))
+            self.add_log(f"DISPLAY BRIGHTNESS SELECTED | value={value}")
 
     def display_contrast_changed(self, _slider, value):
         value = int(round(value))
         self.display_contrast_label.text = f"CONTRAST   {round(value * 100 / 255)}%"
 
     def display_contrast_released(self, slider, touch):
+        # Store the selected value locally. It is sent only when APPLY is pressed.
         if self.display_page.opacity > 0 and slider.collide_point(*touch.pos):
-            self._send_display_data(f"DISPLAY_SET|CONTRAST|{int(round(slider.value))}")
+            value = int(round(slider.value))
+            self.add_log(f"DISPLAY CONTRAST SELECTED | value={value}")
 
     def display_set_mode(self, mode):
         mode = str(mode).upper()
         self.display_mode_label.text = f"MODE   {mode}"
-        self._send_display_data(f"DISPLAY_SET|MODE|{mode}")
+        self.add_log(f"DISPLAY MODE SELECTED | mode={mode}")
 
     def apply_display_settings(self, *_):
-        if self._send_display_data("DISPLAY_APPLY"):
+        brightness = int(round(self.display_brightness.value))
+        contrast = int(round(self.display_contrast.value))
+        mode = self.display_mode_label.text.split("MODE", 1)[-1].strip()
+
+        self.add_log(
+            f"DISPLAY APPLY | BRIGHTNESS={brightness} | "
+            f"CONTRAST={contrast} | MODE={mode}"
+        )
+
+        sent_brightness = self._send_display_data(
+            f"DISPLAY_SET|BRIGHTNESS|{brightness}"
+        )
+        sent_contrast = self._send_display_data(
+            f"DISPLAY_SET|CONTRAST|{contrast}"
+        )
+        sent_mode = self._send_display_data(
+            f"DISPLAY_SET|MODE|{mode}"
+        )
+        sent_apply = self._send_display_data("DISPLAY_APPLY")
+
+        if all((sent_brightness, sent_contrast, sent_mode, sent_apply)):
             self.display_mode_label.text = "MODE   SAVED"
+            self.add_log("DISPLAY SETTINGS APPLIED")
+        else:
+            self.add_log(
+                f"DISPLAY APPLY FAILED | brightness={sent_brightness} "
+                f"contrast={sent_contrast} mode={sent_mode} apply={sent_apply}"
+            )
 
     def show_settings(self, *_):
         self.connect_button.opacity = 0
