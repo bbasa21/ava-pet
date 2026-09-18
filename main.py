@@ -4445,6 +4445,11 @@ class AvaPetApp(App):
         self.settings_page.opacity = 1
         self.settings_page.disabled = False
         self._hide_display_page()
+
+        # Keep SETTINGS above every other page so its buttons receive touches.
+        self.root_layout.remove_widget(self.settings_page)
+        self.root_layout.add_widget(self.settings_page)
+
         self._send_display_data("SETTINGS_ENTER")
 
     # ====================================================
