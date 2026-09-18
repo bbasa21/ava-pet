@@ -64,16 +64,32 @@ jobs:
       - name: Pull official Kivy Buildozer image
         run: docker pull ghcr.io/kivy/buildozer:latest
 
-      - name: Build debug APK
+      - name: Prepare release signing key
+        if: ${{ secrets.AVA_RELEASE_KEYSTORE_B64 != '' && secrets.AVA_RELEASE_KEYSTORE_PASSWD != '' && secrets.AVA_RELEASE_KEYALIAS != '' && secrets.AVA_RELEASE_KEYALIAS_PASSWD != '' }}
+        env:
+          AVA_RELEASE_KEYSTORE_B64: ${{ secrets.AVA_RELEASE_KEYSTORE_B64 }}
         run: |
-          set -euxo pipefail
+          set -euo pipefail
+          printf '%s' "$AVA_RELEASE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/ava-pet-release.keystore"
+          test -s "$RUNNER_TEMP/ava-pet-release.keystore"
+
+      - name: Build signed release APK
+        if: ${{ secrets.AVA_RELEASE_KEYSTORE_B64 != '' && secrets.AVA_RELEASE_KEYSTORE_PASSWD != '' && secrets.AVA_RELEASE_KEYALIAS != '' && secrets.AVA_RELEASE_KEYALIAS_PASSWD != '' }}
+        env:
+          P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.AVA_RELEASE_KEYSTORE_PASSWD }}
+          P4A_RELEASE_KEYALIAS: ${{ secrets.AVA_RELEASE_KEYALIAS }}
+          P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.AVA_RELEASE_KEYALIAS_PASSWD }}
+        run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/buildozer-cache"
-          docker run --rm \
-            --volume "$GITHUB_WORKSPACE:/home/user/hostcwd" \
-            --volume "$RUNNER_TEMP/buildozer-cache:/home/user/.buildozer" \
-            --workdir /home/user/hostcwd \
-            ghcr.io/kivy/buildozer:latest \
-            android debug
+          docker run --rm             --volume "$GITHUB_WORKSPACE:/home/user/hostcwd"             --volume "$RUNNER_TEMP/buildozer-cache:/home/user/.buildozer"             --volume "$RUNNER_TEMP/ava-pet-release.keystore:/home/user/ava-pet-release.keystore:ro"             --workdir /home/user/hostcwd             -e P4A_RELEASE_KEYSTORE=/home/user/ava-pet-release.keystore             -e P4A_RELEASE_KEYSTORE_PASSWD             -e P4A_RELEASE_KEYALIAS             -e P4A_RELEASE_KEYALIAS_PASSWD             ghcr.io/kivy/buildozer:latest             android release
+
+      - name: Fail clearly if release signing secrets are missing
+        if: ${{ secrets.AVA_RELEASE_KEYSTORE_B64 == '' || secrets.AVA_RELEASE_KEYSTORE_PASSWD == '' || secrets.AVA_RELEASE_KEYALIAS == '' || secrets.AVA_RELEASE_KEYALIAS_PASSWD == '' }}
+        run: |
+          echo 'Release signing secrets are not configured yet.'
+          echo 'Required: AVA_RELEASE_KEYSTORE_B64, AVA_RELEASE_KEYSTORE_PASSWD, AVA_RELEASE_KEYALIAS, AVA_RELEASE_KEYALIAS_PASSWD'
+          exit 1
 
       - name: Verify APK
         run: |
