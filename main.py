@@ -1968,7 +1968,8 @@ class AvaPetApp(App):
             )
 
             if title == "AVA DISPLAY":
-                button.bind(on_release=self.show_display_settings)
+                # Open immediately on touch-down so the page cannot miss the click.
+                button.bind(on_press=self.show_display_settings)
 
 
         # ----------------------------------------------------
