@@ -9,6 +9,7 @@ from kivy.core.text import LabelBase
 from kivy.metrics import dp
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.slider import Slider
 from kivy.uix.image import Image
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
@@ -1908,6 +1909,7 @@ class AvaPetApp(App):
         # ----------------------------------------------------
 
         settings_items = [
+            "AVA DISPLAY",
             "VOICE",
             "VOLUME",
             "VOICE SETTINGS",
@@ -1965,6 +1967,9 @@ class AvaPetApp(App):
                 button
             )
 
+            if title == "AVA DISPLAY":
+                button.bind(on_release=self.show_display_settings)
+
 
         # ----------------------------------------------------
         # BACK TO HOME
@@ -2009,6 +2014,47 @@ class AvaPetApp(App):
 
         self.settings_page.opacity = 0
         self.settings_page.disabled = True
+
+        # ====================================================
+        # AVA DISPLAY PAGE
+        # ====================================================
+
+        self.display_page = FloatLayout(size_hint=(1, 1))
+        self.display_title = Label(text="AVA DISPLAY", font_name=FONT_NAME, font_size=dp(25), size_hint=(1, None), height=dp(55), pos_hint={"center_x": 0.5, "top": 0.90})
+        self.display_page.add_widget(self.display_title)
+
+        self.display_brightness_label = Label(text="BRIGHTNESS   100%", font_name=FONT_NAME, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": 0.5, "top": 0.72})
+        self.display_page.add_widget(self.display_brightness_label)
+        self.display_brightness = Slider(min=0, max=255, value=255, step=1, size_hint=(0.78, None), height=dp(40), pos_hint={"center_x": 0.5, "top": 0.65})
+        self.display_page.add_widget(self.display_brightness)
+
+        self.display_contrast_label = Label(text="CONTRAST   100%", font_name=FONT_NAME, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": 0.5, "top": 0.54})
+        self.display_page.add_widget(self.display_contrast_label)
+        self.display_contrast = Slider(min=0, max=255, value=255, step=1, size_hint=(0.78, None), height=dp(40), pos_hint={"center_x": 0.5, "top": 0.47})
+        self.display_page.add_widget(self.display_contrast)
+
+        self.display_mode_label = Label(text="MODE   NORMAL", font_name=FONT_NAME, font_size=dp(13), size_hint=(1, None), height=dp(30), pos_hint={"center_x": 0.5, "top": 0.36})
+        self.display_page.add_widget(self.display_mode_label)
+        self.display_normal_button = Button(text="NORMAL", font_name=FONT_NAME, font_size=dp(11), size_hint=(None, None), size=(dp(125), dp(45)), pos_hint={"center_x": 0.32, "top": 0.29}, background_normal="", background_down="", background_color=(0.45, 0.12, 0.75, 0.9))
+        self.display_eco_button = Button(text="ECO MODE", font_name=FONT_NAME, font_size=dp(11), size_hint=(None, None), size=(dp(125), dp(45)), pos_hint={"center_x": 0.68, "top": 0.29}, background_normal="", background_down="", background_color=(0.25, 0.08, 0.42, 0.9))
+        self.display_page.add_widget(self.display_normal_button)
+        self.display_page.add_widget(self.display_eco_button)
+
+        self.display_apply_button = Button(text="APPLY & SAVE", font_name=FONT_NAME, font_size=dp(13), size_hint=(None, None), size=(dp(165), dp(48)), pos_hint={"center_x": 0.38, "y": 0.10}, background_normal="", background_down="", background_color=(0.45, 0.12, 0.75, 0.9))
+        self.display_back_button = Button(text="BACK", font_name=FONT_NAME, font_size=dp(13), size_hint=(None, None), size=(dp(125), dp(48)), pos_hint={"center_x": 0.70, "y": 0.10}, background_normal="", background_down="", background_color=(0.15, 0.15, 0.18, 0.9))
+        self.display_page.add_widget(self.display_apply_button)
+        self.display_page.add_widget(self.display_back_button)
+
+        self.display_brightness.bind(value=self.display_brightness_changed)
+        self.display_contrast.bind(value=self.display_contrast_changed)
+        self.display_normal_button.bind(on_release=lambda *_: self.display_set_mode("NORMAL"))
+        self.display_eco_button.bind(on_release=lambda *_: self.display_set_mode("ECO"))
+        self.display_apply_button.bind(on_release=self.apply_display_settings)
+        self.display_back_button.bind(on_release=self.show_settings)
+
+        self.root_layout.add_widget(self.display_page)
+        self.display_page.opacity = 0
+        self.display_page.disabled = True
 
         # ====================================================
         # MY GAMES PAGE
