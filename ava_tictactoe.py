@@ -108,7 +108,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         for index, button in enumerate(self.ttt_buttons):
             value = self.ttt_board_state[index]
             button.text = "" if value == "-" else value
-            button.disabled = self.ttt_finished or value != "-" or self.ttt_selected_pending or self.ttt_turn != "ALI"
+            button.disabled = False
             button.background_color = (.17, .055, .29, 1) if value == "-" else (.50, .16, .78, 1)
             button.color = (1, 1, 1, 1)
         self.ttt_score.text = f"ALI  {self.ttt_ali_score}     —     {self.ttt_ava_score}  AVA"
