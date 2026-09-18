@@ -2036,6 +2036,7 @@ class AvaPetApp(App):
         self.display_page.add_widget(self.display_contrast)
 
         self.display_mode_label = Label(text="MODE   NORMAL", font_name=FONT_NAME, font_size=dp(13), size_hint=(1, None), height=dp(30), pos_hint={"center_x": 0.5, "top": 0.36})
+        self.display_selected_mode = "NORMAL"
         self.display_page.add_widget(self.display_mode_label)
         self.display_normal_button = Button(text="NORMAL", font_name=FONT_NAME, font_size=dp(11), size_hint=(None, None), size=(dp(125), dp(45)), pos_hint={"center_x": 0.32, "top": 0.29}, background_normal="", background_down="", background_color=(0.45, 0.12, 0.75, 0.9))
         self.display_eco_button = Button(text="ECO MODE", font_name=FONT_NAME, font_size=dp(11), size_hint=(None, None), size=(dp(125), dp(45)), pos_hint={"center_x": 0.68, "top": 0.29}, background_normal="", background_down="", background_color=(0.25, 0.08, 0.42, 0.9))
@@ -2048,9 +2049,7 @@ class AvaPetApp(App):
         self.display_page.add_widget(self.display_back_button)
 
         self.display_brightness.bind(value=self.display_brightness_changed)
-        self.display_brightness.bind(on_touch_up=self.display_brightness_released)
         self.display_contrast.bind(value=self.display_contrast_changed)
-        self.display_contrast.bind(on_touch_up=self.display_contrast_released)
         self.display_normal_button.bind(on_release=lambda *_: self.display_set_mode("NORMAL"))
         self.display_eco_button.bind(on_release=lambda *_: self.display_set_mode("ECO"))
         self.display_apply_button.bind(on_release=self.apply_display_settings)
@@ -3617,14 +3616,20 @@ class AvaPetApp(App):
                 self.display_syncing = True
                 self.display_brightness.value = int(parts[1])
                 self.display_contrast.value = int(parts[2])
-                self.display_mode_label.text = f"MODE   {parts[3].strip().upper()}"
+                self.display_selected_mode = parts[3].strip().upper()
+                if self.display_selected_mode not in ("NORMAL", "ECO"):
+                    self.display_selected_mode = "NORMAL"
+                self.display_mode_label.text = f"MODE   {self.display_selected_mode}"
                 self.add_log(f"DISPLAY SYNC <- {text}")
             except Exception as exc:
                 self.add_log(f"DISPLAY SYNC ERROR: {exc}")
             finally:
                 self.display_syncing = False
             if message == "DISPLAY_APPLIED":
-                self.display_mode_label.text = f"MODE   SAVED ({parts[3].strip().upper()})"
+                self.add_log(
+                    f"DISPLAY SAVED | BRIGHTNESS={parts[1]} | "
+                    f"CONTRAST={parts[2]} | MODE={parts[3].strip().upper()}"
+                )
             return
 
         try:
@@ -4398,6 +4403,9 @@ class AvaPetApp(App):
         self.settings_page.opacity = 1
         self.settings_page.disabled = False
 
+        self.root_layout.remove_widget(self.settings_page)
+        self.root_layout.add_widget(self.settings_page)
+
     def display_brightness_changed(self, _slider, value):
         value = int(round(value))
         self.display_brightness_label.text = f"BRIGHTNESS   {round(value * 100 / 255)}%"
@@ -4420,13 +4428,16 @@ class AvaPetApp(App):
 
     def display_set_mode(self, mode):
         mode = str(mode).upper()
+        if mode not in ("NORMAL", "ECO"):
+            mode = "NORMAL"
+        self.display_selected_mode = mode
         self.display_mode_label.text = f"MODE   {mode}"
         self.add_log(f"DISPLAY MODE SELECTED | mode={mode}")
 
     def apply_display_settings(self, *_):
         brightness = int(round(self.display_brightness.value))
         contrast = int(round(self.display_contrast.value))
-        mode = self.display_mode_label.text.split("MODE", 1)[-1].strip()
+        mode = getattr(self, "display_selected_mode", "NORMAL")
 
         self.add_log(
             f"DISPLAY APPLY | BRIGHTNESS={brightness} | "
