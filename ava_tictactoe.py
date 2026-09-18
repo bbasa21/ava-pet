@@ -31,7 +31,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .45})
         self.ttt_buttons = []
         for index in range(9):
-            button = Button(text="", font_name=font_name, font_size=dp(42), background_normal="", background_down="", background_color=(.17, .055, .29, 1), color=(1, 1, 1, 1))
+            button = Button(text="", font_name=font_name, font_size=dp(48), background_normal="", background_down="", background_color=(.17, .055, .29, 1), color=(1, 1, 1, 1))
             button.bind(on_release=lambda _button, idx=index: self.ttt_select_cell(idx))
             self.ttt_buttons.append(button)
             self.ttt_board.add_widget(button)
