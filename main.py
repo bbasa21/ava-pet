@@ -2046,13 +2046,16 @@ class AvaPetApp(App):
         self.display_page.add_widget(self.display_back_button)
 
         self.display_brightness.bind(value=self.display_brightness_changed)
+        self.display_brightness.bind(on_touch_up=self.display_brightness_released)
         self.display_contrast.bind(value=self.display_contrast_changed)
+        self.display_contrast.bind(on_touch_up=self.display_contrast_released)
         self.display_normal_button.bind(on_release=lambda *_: self.display_set_mode("NORMAL"))
         self.display_eco_button.bind(on_release=lambda *_: self.display_set_mode("ECO"))
         self.display_apply_button.bind(on_release=self.apply_display_settings)
-        self.display_back_button.bind(on_release=self.show_settings)
+        self.display_back_button.bind(on_release=self.back_to_settings)
 
         self.root_layout.add_widget(self.display_page)
+        self.display_syncing = False
         self.display_page.opacity = 0
         self.display_page.disabled = True
 
@@ -3607,6 +3610,21 @@ class AvaPetApp(App):
             else ""
         )
 
+        if message in ("SETTINGS_READY", "DISPLAY_PREVIEW", "DISPLAY_APPLIED") and len(parts) >= 4:
+            try:
+                self.display_syncing = True
+                self.display_brightness.value = int(parts[1])
+                self.display_contrast.value = int(parts[2])
+                self.display_mode_label.text = f"MODE   {parts[3].strip().upper()}"
+                self.add_log(f"DISPLAY SYNC <- {text}")
+            except Exception as exc:
+                self.add_log(f"DISPLAY SYNC ERROR: {exc}")
+            finally:
+                self.display_syncing = False
+            if message == "DISPLAY_APPLIED":
+                self.display_mode_label.text = f"MODE   SAVED ({parts[3].strip().upper()})"
+            return
+
         try:
 
             # ------------------------------------------------
@@ -4346,24 +4364,45 @@ class AvaPetApp(App):
         return sent
 
     def show_display_settings(self, *_):
-        self.show_settings()
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+        self.finding_page.opacity = 0
+        self.finding_page.disabled = True
+        self.home_page.opacity = 0
+        self.home_page.disabled = True
+        self.games_page.opacity = 0
+        self.games_page.disabled = True
+        self.math_page.opacity = 0
+        self.math_page.disabled = True
+        self.logic_page.opacity = 0
+        self.logic_page.disabled = True
         self.settings_page.opacity = 0
         self.settings_page.disabled = True
         self.display_page.opacity = 1
         self.display_page.disabled = False
         self._send_display_data("SETTINGS_ENTER")
 
+    def back_to_settings(self, *_):
+        self.display_page.opacity = 0
+        self.display_page.disabled = True
+        self.settings_page.opacity = 1
+        self.settings_page.disabled = False
+
     def display_brightness_changed(self, _slider, value):
         value = int(round(value))
         self.display_brightness_label.text = f"BRIGHTNESS   {round(value * 100 / 255)}%"
-        if self.display_page.opacity > 0:
-            self._send_display_data(f"DISPLAY_SET|BRIGHTNESS|{value}")
+
+    def display_brightness_released(self, slider, touch):
+        if self.display_page.opacity > 0 and slider.collide_point(*touch.pos):
+            self._send_display_data(f"DISPLAY_SET|BRIGHTNESS|{int(round(slider.value))}")
 
     def display_contrast_changed(self, _slider, value):
         value = int(round(value))
         self.display_contrast_label.text = f"CONTRAST   {round(value * 100 / 255)}%"
-        if self.display_page.opacity > 0:
-            self._send_display_data(f"DISPLAY_SET|CONTRAST|{value}")
+
+    def display_contrast_released(self, slider, touch):
+        if self.display_page.opacity > 0 and slider.collide_point(*touch.pos):
+            self._send_display_data(f"DISPLAY_SET|CONTRAST|{int(round(slider.value))}")
 
     def display_set_mode(self, mode):
         mode = str(mode).upper()
