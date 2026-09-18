@@ -1968,8 +1968,9 @@ class AvaPetApp(App):
             )
 
             if title == "AVA DISPLAY":
-                # Open immediately on touch-down so the page cannot miss the click.
-                button.bind(on_press=self.show_display_settings)
+                # Defer navigation until Kivy finishes dispatching the touch.
+                # Changing page state inside on_press can interrupt the event.
+                button.bind(on_release=self._ava_display_button_released)
 
 
         # ----------------------------------------------------
@@ -4363,6 +4364,9 @@ class AvaPetApp(App):
             self.add_log(f"DISPLAY WRITE ERROR: {exc}")
         self.add_log(f"DISPLAY -> {message} | sent={sent}")
         return sent
+
+    def _ava_display_button_released(self, *_):
+        Clock.schedule_once(self.show_display_settings, 0)
 
     def show_display_settings(self, *_):
         self.connect_button.opacity = 0
