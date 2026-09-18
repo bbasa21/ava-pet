@@ -1,4 +1,4 @@
-name: Build AVA PET APK (Kivy Docker)
+name: Build AVA PET APK (Kivy Docker - Release)
 
 on:
   workflow_dispatch:
