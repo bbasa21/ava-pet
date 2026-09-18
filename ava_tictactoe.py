@@ -25,7 +25,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_page = FloatLayout(size_hint=(1, 1))
         self.ttt_title = Label(text="TIC TAC TOE", font_name=font_name, font_size=dp(24), size_hint=(1, None), height=dp(45), pos_hint={"center_x": .5, "top": .99})
         self.ttt_subtitle = Label(text="ALI X  •  AVA O", font_name=font_name, font_size=dp(12), size_hint=(1, None), height=dp(30), pos_hint={"center_x": .5, "top": .90})
-        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .20})
+        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=font_name, font_size=dp(13), size_hint=(None, None), size=(dp(190), dp(35)), pos_hint={"center_x": .76, "top": .90})
         self.ttt_status = Label(text="YOUR TURN", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .15})
 
         self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .45})
@@ -109,7 +109,7 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             value = self.ttt_board_state[index]
             button.text = "" if value == "-" else value
             button.disabled = self.ttt_finished or value != "-" or self.ttt_selected_pending or self.ttt_turn != "ALI"
-            button.background_color = (.17, .055, .29, 1) if value == "-" else (.36, .09, .58, 1)
+            button.background_color = (.17, .055, .29, 1) if value == "-" else (.50, .16, .78, 1)
             button.color = (1, 1, 1, 1)
         self.ttt_score.text = f"ALI  {self.ttt_ali_score}     —     {self.ttt_ava_score}  AVA"
 
