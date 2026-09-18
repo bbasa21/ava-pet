@@ -4331,6 +4331,49 @@ class AvaPetApp(App):
     # SETTINGS PAGE
     # ====================================================
 
+    def _hide_display_page(self):
+        if hasattr(self, "display_page"):
+            self.display_page.opacity = 0
+            self.display_page.disabled = True
+
+    def _send_display_data(self, message):
+        try:
+            sent = self.ble.write_data(message)
+        except Exception as exc:
+            sent = False
+            self.add_log(f"DISPLAY WRITE ERROR: {exc}")
+        self.add_log(f"DISPLAY -> {message} | sent={sent}")
+        return sent
+
+    def show_display_settings(self, *_):
+        self.show_settings()
+        self.settings_page.opacity = 0
+        self.settings_page.disabled = True
+        self.display_page.opacity = 1
+        self.display_page.disabled = False
+        self._send_display_data("SETTINGS_ENTER")
+
+    def display_brightness_changed(self, _slider, value):
+        value = int(round(value))
+        self.display_brightness_label.text = f"BRIGHTNESS   {round(value * 100 / 255)}%"
+        if self.display_page.opacity > 0:
+            self._send_display_data(f"DISPLAY_SET|BRIGHTNESS|{value}")
+
+    def display_contrast_changed(self, _slider, value):
+        value = int(round(value))
+        self.display_contrast_label.text = f"CONTRAST   {round(value * 100 / 255)}%"
+        if self.display_page.opacity > 0:
+            self._send_display_data(f"DISPLAY_SET|CONTRAST|{value}")
+
+    def display_set_mode(self, mode):
+        mode = str(mode).upper()
+        self.display_mode_label.text = f"MODE   {mode}"
+        self._send_display_data(f"DISPLAY_SET|MODE|{mode}")
+
+    def apply_display_settings(self, *_):
+        if self._send_display_data("DISPLAY_APPLY"):
+            self.display_mode_label.text = "MODE   SAVED"
+
     def show_settings(self, *_):
         self.connect_button.opacity = 0
         self.connect_button.disabled = True
@@ -4352,6 +4395,8 @@ class AvaPetApp(App):
 
         self.settings_page.opacity = 1
         self.settings_page.disabled = False
+        self._hide_display_page()
+        self._send_display_data("SETTINGS_ENTER")
 
     # ====================================================
     # AVA HOME
@@ -4376,6 +4421,8 @@ class AvaPetApp(App):
 
         self.settings_page.opacity = 0
         self.settings_page.disabled = True
+        self._hide_display_page()
+        self._send_display_data("SETTINGS_EXIT")
 
         self.home_page.opacity = 1
         self.home_page.disabled = False
