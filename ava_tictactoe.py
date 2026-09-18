@@ -24,8 +24,8 @@ def install_tictactoe(app_class, font_name="Orbitron"):
 
         self.ttt_page = FloatLayout(size_hint=(1, 1))
         self.ttt_title = Label(text="TIC TAC TOE", font_name=font_name, font_size=dp(24), size_hint=(1, None), height=dp(45), pos_hint={"center_x": .5, "top": .99})
-        self.ttt_subtitle = Label(text="ALI X  •  AVA O", font_name=font_name, font_size=dp(12), size_hint=(1, None), height=dp(30), pos_hint={"center_x": .5, "top": .90})
-        self.ttt_score = Label(text="ALI  0     —     0  AVA", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .20})
+        self.ttt_subtitle = Label(text="ALI X  •  AVA O", font_name=font_name, font_size=dp(12), size_hint=(.45, None), height=dp(30), pos_hint={"center_x": .28, "top": .90})
+        self.ttt_score = Label(text="ALI  0  —  0  AVA", font_name=font_name, font_size=dp(13), size_hint=(.55, None), height=dp(35), pos_hint={"center_x": .73, "top": .90})
         self.ttt_status = Label(text="YOUR TURN", font_name=font_name, font_size=dp(13), size_hint=(1, None), height=dp(35), pos_hint={"center_x": .5, "y": .15})
 
         self.ttt_board = GridLayout(cols=3, rows=3, spacing=dp(5), padding=dp(4), size_hint=(None, None), size=(dp(300), dp(300)), pos_hint={"center_x": .5, "center_y": .45})
