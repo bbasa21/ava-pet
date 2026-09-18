@@ -4381,6 +4381,12 @@ class AvaPetApp(App):
         self.display_page.opacity = 1
         self.display_page.disabled = False
 
+        # Keep AVA DISPLAY above every other page.
+        self.root_layout.remove_widget(self.display_page)
+        self.root_layout.add_widget(self.display_page)
+
+        self.add_log("AVA DISPLAY PAGE OPENED")
+
     def back_to_settings(self, *_):
         self.display_page.opacity = 0
         self.display_page.disabled = True
