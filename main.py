@@ -2924,6 +2924,16 @@ class AvaPetApp(App):
         )
 
         # Important diagnostic.
+        try:
+            sent = self.ble.write_command("MY_GAMES_ENTER")
+            self.add_log(
+                f"MY GAMES ENTER -> MY_GAMES_ENTER | sent={sent}"
+            )
+        except Exception as exc:
+            self.add_log(
+                f"MY GAMES ENTER ERROR -> {exc}"
+            )
+
         self.add_log(
             "MY GAMES PAGE READY. BUTTONS ENABLED."
         )
