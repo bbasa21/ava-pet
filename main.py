@@ -4529,6 +4529,16 @@ class AvaPetApp(App):
         self._hide_display_page()
         self._send_display_data("SETTINGS_EXIT")
 
+        try:
+            sent = self.ble.write_command("MY_GAMES_EXIT")
+            self.add_log(
+                f"MY GAMES EXIT -> MY_GAMES_EXIT | sent={sent}"
+            )
+        except Exception as exc:
+            self.add_log(
+                f"MY GAMES EXIT ERROR -> {exc}"
+            )
+
         self.home_page.opacity = 1
         self.home_page.disabled = False
         
