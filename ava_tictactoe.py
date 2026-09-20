@@ -188,8 +188,8 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_selected_pending = True
         self.ttt_status.text = "STARTING..."
         try:
-            calm_sent = self.ble.write_data("CALM")
-            self.add_log(f"TIC TAC TOE REMATCH -> CALM | sent={calm_sent}")
+            debug_oled_sent = self.ble.write_data("DEBUG OLED")
+            self.add_log(f"TIC TAC TOE REMATCH -> DEBUG OLED | sent={debug_oled_sent}")
             sent = self.ble.write_data("TTT_REMATCH")
         except Exception as exc:
             sent = False
