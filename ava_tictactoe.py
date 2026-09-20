@@ -189,9 +189,9 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         self.ttt_status.text = "STARTING..."
         try:
             # Keep rematch control commands on the COMMAND queue so
-            # DEBUG OLED is guaranteed to execute before TTT_REMATCH.
-            debug_oled_sent = self.ble.write_command("DEBUG OLED")
-            self.add_log(f"TIC TAC TOE REMATCH -> DEBUG OLED | sent={debug_oled_sent}")
+            # debug eyes is sent before TTT_REMATCH.
+            debug_eyes_sent = self.ble.write_command("debug eyes")
+            self.add_log(f"TIC TAC TOE REMATCH -> debug eyes | sent={debug_eyes_sent}")
             sent = self.ble.write_command("TTT_REMATCH")
         except Exception as exc:
             sent = False
