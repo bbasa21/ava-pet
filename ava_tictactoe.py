@@ -249,6 +249,14 @@ def install_tictactoe(app_class, font_name="Orbitron"):
         if kind == "TTT_FINISHED":
             winner = parts[1].strip().upper() if len(parts) > 1 else "DRAW"
 
+            # When ALI wins the round, AVA reacts with SAD.
+            if winner == "ALI":
+                try:
+                    sent = self.ble.write_data("SAD")
+                    self.add_log(f"TIC TAC TOE WIN REACTION -> SAD | sent={sent}")
+                except Exception as exc:
+                    self.add_log(f"TIC TAC TOE SAD ERROR -> {exc}")
+
             # When ALI loses the round, AVA briefly celebrates with GLEE.
             if winner == "AVA":
                 try:
