@@ -175,6 +175,13 @@ def install_tictactoe(app_class, font_name="Orbitron"):
             self.ttt_status.text = "MOVE SEND FAILED"
             self._ttt_render_board()
 
+    def _ttt_end_glee(self, *_):
+        try:
+            sent = self.ble.write_data("TTT_GLEE_END")
+            self.add_log(f"TIC TAC TOE GLEE END | sent={sent}")
+        except Exception as exc:
+            self.add_log(f"TIC TAC TOE GLEE END ERROR -> {exc}")
+
     def ttt_request_rematch(self, *_):
         if not self.ttt_finished:
             return
@@ -239,6 +246,16 @@ def install_tictactoe(app_class, font_name="Orbitron"):
 
         if kind == "TTT_FINISHED":
             winner = parts[1].strip().upper() if len(parts) > 1 else "DRAW"
+
+            # When ALI loses the round, AVA briefly celebrates with GLEE.
+            if winner == "AVA":
+                try:
+                    sent = self.ble.write_data("TTT_GLEE")
+                    self.add_log(f"TIC TAC TOE LOSS REACTION -> GLEE | sent={sent}")
+                    Clock.schedule_once(self._ttt_end_glee, 0.9)
+                except Exception as exc:
+                    self.add_log(f"TIC TAC TOE GLEE ERROR -> {exc}")
+
             self.ttt_finished = True
             self.ttt_selected_pending = False
             self.ttt_rematch.disabled = False
