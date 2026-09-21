@@ -4350,6 +4350,18 @@ class AvaPetApp(App):
 
     def back_to_games(self, *_):
 
+        # Explicitly stop the firmware-side game before returning to
+        # MY GAMES. This also clears a stale TTT session.
+        try:
+            sent = self.ble.write_command("GAME_END")
+            self.add_log(
+                f"GAME END -> GAME_END | sent={sent}"
+            )
+        except Exception as exc:
+            self.add_log(
+                f"GAME END ERROR -> {exc}"
+            )
+
         self.math_page.opacity = 0
         self.math_page.disabled = True
 
