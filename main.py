@@ -4547,6 +4547,8 @@ class AvaPetApp(App):
         self.logic_page.disabled = True
         self.settings_page.opacity = 0
         self.settings_page.disabled = True
+        self.network_page.opacity = 0
+        self.network_page.disabled = True
         self.display_page.opacity = 1
         self.display_page.disabled = False
 
@@ -4559,6 +4561,8 @@ class AvaPetApp(App):
     def back_to_settings(self, *_):
         self.display_page.opacity = 0
         self.display_page.disabled = True
+        self.network_page.opacity = 0
+        self.network_page.disabled = True
         self.settings_page.opacity = 1
         self.settings_page.disabled = False
 
