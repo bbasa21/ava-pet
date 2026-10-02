@@ -10,6 +10,7 @@ from kivy.metrics import dp
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.slider import Slider
+from kivy.uix.textinput import TextInput
 from kivy.uix.image import Image
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
@@ -1910,6 +1911,7 @@ class AvaPetApp(App):
 
         settings_items = [
             "AVA DISPLAY",
+            "AVA NETWORK",
             "VOICE",
             "VOLUME",
             "VOICE SETTINGS",
@@ -1971,6 +1973,9 @@ class AvaPetApp(App):
                 # Defer navigation until Kivy finishes dispatching the touch.
                 # Changing page state inside on_press can interrupt the event.
                 button.bind(on_release=self._ava_display_button_released)
+            elif title == "AVA NETWORK":
+                # Defer navigation so the settings button always receives on_release.
+                button.bind(on_release=self._ava_network_button_released)
 
 
         # ----------------------------------------------------
@@ -2059,6 +2064,98 @@ class AvaPetApp(App):
         self.display_syncing = False
         self.display_page.opacity = 0
         self.display_page.disabled = True
+
+        # ====================================================
+        # AVA NETWORK PAGE
+        # ====================================================
+
+        self.network_page = FloatLayout(size_hint=(1, 1))
+
+        self.network_title = Label(
+            text="AVA NETWORK",
+            font_name=FONT_NAME,
+            font_size=dp(25),
+            size_hint=(1, None),
+            height=dp(55),
+            pos_hint={"center_x": 0.5, "top": 0.90},
+        )
+        self.network_page.add_widget(self.network_title)
+
+        self.network_status_label = Label(
+            text="CHECKING AVA NETWORK...",
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            size_hint=(1, None),
+            height=dp(45),
+            pos_hint={"center_x": 0.5, "top": 0.76},
+        )
+        self.network_page.add_widget(self.network_status_label)
+
+        self.network_ssid_label = Label(
+            text="",
+            font_name=FONT_NAME,
+            font_size=dp(12),
+            size_hint=(1, None),
+            height=dp(35),
+            pos_hint={"center_x": 0.5, "top": 0.69},
+        )
+        self.network_page.add_widget(self.network_ssid_label)
+
+        self.network_ssid_input = TextInput(
+            hint_text="SSID",
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            multiline=False,
+            size_hint=(None, None),
+            size=(dp(285), dp(52)),
+            pos_hint={"center_x": 0.5, "top": 0.57},
+        )
+        self.network_page.add_widget(self.network_ssid_input)
+
+        self.network_password_input = TextInput(
+            hint_text="PASSWORD",
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            multiline=False,
+            password=True,
+            size_hint=(None, None),
+            size=(dp(285), dp(52)),
+            pos_hint={"center_x": 0.5, "top": 0.45},
+        )
+        self.network_page.add_widget(self.network_password_input)
+
+        self.network_connect_button = Button(
+            text="CONNECT",
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            size_hint=(None, None),
+            size=(dp(165), dp(48)),
+            pos_hint={"center_x": 0.5, "top": 0.32},
+            background_normal="",
+            background_down="",
+            background_color=(0.45, 0.12, 0.75, 0.9),
+        )
+        self.network_page.add_widget(self.network_connect_button)
+
+        self.network_back_button = Button(
+            text="BACK",
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            size_hint=(None, None),
+            size=(dp(150), dp(45)),
+            pos_hint={"center_x": 0.5, "y": 0.03},
+            background_normal="",
+            background_down="",
+            background_color=(0.15, 0.15, 0.18, 0.9),
+        )
+        self.network_page.add_widget(self.network_back_button)
+
+        self.network_connect_button.bind(on_release=self.connect_ava_network)
+        self.network_back_button.bind(on_release=self.back_to_settings)
+
+        self.root_layout.add_widget(self.network_page)
+        self.network_page.opacity = 0
+        self.network_page.disabled = True
 
         # ====================================================
         # MY GAMES PAGE
@@ -3621,6 +3718,46 @@ class AvaPetApp(App):
             else ""
         )
 
+        if message == "WIFI_STATUS":
+            if len(parts) >= 2:
+                status = parts[1].strip().upper()
+
+                if status == "CONNECTED":
+                    ssid = parts[2].strip() if len(parts) >= 3 else ""
+                    self.network_status_label.text = "AVA ALREADY CONNECTED"
+                    self.network_ssid_label.text = (
+                        f"NETWORK   {ssid}" if ssid else "NETWORK   CONNECTED"
+                    )
+                    self.network_fields_visible(False)
+                    self.add_log(f"AVA NETWORK STATUS <- CONNECTED | SSID={ssid}")
+                else:
+                    self.network_status_label.text = "AVA NOT CONNECTED"
+                    self.network_ssid_label.text = ""
+                    self.network_fields_visible(True)
+                    self.add_log("AVA NETWORK STATUS <- DISCONNECTED")
+            return
+
+        if message == "WIFI_CONNECTING":
+            self.network_status_label.text = "CONNECTING AVA..."
+            self.network_ssid_label.text = (
+                f"NETWORK   {parts[1].strip()}" if len(parts) >= 2 else ""
+            )
+            self.network_fields_visible(False)
+            self.add_log(f"AVA NETWORK CONNECTING <- {text}")
+            Clock.schedule_once(
+                lambda *_: self.request_ava_network_status(),
+                3.0,
+            )
+            return
+
+        if message == "WIFI_CONNECT_REJECTED":
+            reason = parts[1].strip() if len(parts) >= 2 else "UNKNOWN"
+            self.network_status_label.text = "CONNECTION FAILED"
+            self.network_ssid_label.text = f"ERROR   {reason}"
+            self.network_fields_visible(True)
+            self.add_log(f"AVA NETWORK CONNECT REJECTED | {reason}")
+            return
+
         if message in ("SETTINGS_READY", "DISPLAY_PREVIEW", "DISPLAY_APPLIED") and len(parts) >= 4:
             try:
                 self.display_syncing = True
@@ -4486,6 +4623,91 @@ class AvaPetApp(App):
                 f"contrast={sent_contrast} mode={sent_mode} apply={sent_apply}"
             )
 
+    def _ava_network_button_released(self, *_):
+        Clock.schedule_once(self.show_ava_network, 0)
+
+    def network_fields_visible(self, visible):
+        opacity = 1 if visible else 0
+        disabled = not visible
+
+        self.network_ssid_input.opacity = opacity
+        self.network_ssid_input.disabled = disabled
+        self.network_password_input.opacity = opacity
+        self.network_password_input.disabled = disabled
+        self.network_connect_button.opacity = opacity
+        self.network_connect_button.disabled = disabled
+
+    def request_ava_network_status(self):
+        if not self.ble.connected or not self.ble.ready:
+            self.network_status_label.text = "AVA BLE NOT READY"
+            self.network_ssid_label.text = ""
+            self.network_fields_visible(False)
+            self.add_log("AVA NETWORK STATUS REQUEST FAILED: BLE NOT READY")
+            return False
+
+        self.network_status_label.text = "CHECKING AVA NETWORK..."
+        self.network_ssid_label.text = ""
+        self.network_fields_visible(False)
+
+        sent = self.ble.write_data("WIFI_STATUS_REQUEST")
+        self.add_log(f"AVA NETWORK STATUS REQUEST | sent={sent}")
+        return sent
+
+    def show_ava_network(self, *_):
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+
+        for page_name in (
+            "finding_page",
+            "home_page",
+            "games_page",
+            "math_page",
+            "logic_page",
+            "settings_page",
+            "display_page",
+        ):
+            page = getattr(self, page_name, None)
+            if page is not None:
+                page.opacity = 0
+                page.disabled = True
+
+        self.network_page.opacity = 1
+        self.network_page.disabled = False
+
+        self.root_layout.remove_widget(self.network_page)
+        self.root_layout.add_widget(self.network_page)
+
+        self.network_status_label.text = "CHECKING AVA NETWORK..."
+        self.network_ssid_label.text = ""
+        self.network_fields_visible(False)
+
+        self.request_ava_network_status()
+        self.add_log("AVA NETWORK PAGE OPENED")
+
+    def connect_ava_network(self, *_):
+        ssid = self.network_ssid_input.text.strip()
+        password = self.network_password_input.text
+
+        if not ssid:
+            self.network_status_label.text = "ENTER SSID"
+            self.add_log("AVA NETWORK CONNECT: SSID EMPTY")
+            return
+
+        self.network_status_label.text = "CONNECTING AVA..."
+        self.network_ssid_label.text = f"NETWORK   {ssid}"
+        self.network_fields_visible(False)
+
+        payload = f"WIFI_CONNECT|{ssid}|{password}"
+        sent = self.ble.write_data(payload)
+
+        self.add_log(
+            f"AVA NETWORK CONNECT REQUEST | sent={sent} | SSID={ssid}"
+        )
+
+        if not sent:
+            self.network_status_label.text = "CONNECT SEND FAILED"
+            self.network_fields_visible(True)
+
     def show_settings(self, *_):
         self.connect_button.opacity = 0
         self.connect_button.disabled = True
@@ -4508,6 +4730,8 @@ class AvaPetApp(App):
         self.settings_page.opacity = 1
         self.settings_page.disabled = False
         self._hide_display_page()
+        self.network_page.opacity = 0
+        self.network_page.disabled = True
 
         # Keep SETTINGS above every other page so its buttons receive touches.
         self.root_layout.remove_widget(self.settings_page)
@@ -4539,6 +4763,8 @@ class AvaPetApp(App):
         self.settings_page.opacity = 0
         self.settings_page.disabled = True
         self._hide_display_page()
+        self.network_page.opacity = 0
+        self.network_page.disabled = True
         self._send_display_data("SETTINGS_EXIT")
 
         try:
