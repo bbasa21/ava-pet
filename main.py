@@ -25,6 +25,7 @@ from jnius import autoclass, PythonJavaClass, java_method
 from ava_games import AVAILABLE_GAMES, game_load_command
 from snake_ladder import build_snake_ladder_page, SnakeLadderGame
 from ava_tictactoe import install_tictactoe
+from ava_ai_providers import check_available_providers, ask_provider
 
 
 # ============================================================
@@ -4691,6 +4692,20 @@ class AvaPetApp(App):
         )
         self.ai_page.add_widget(self.ai_key_input)
 
+
+
+        self.ai_gapgpt_key_input = TextInput(
+            hint_text="GAPGPT API KEY (OPTIONAL)",
+            font_name=FONT_NAME,
+            font_size=dp(11),
+            multiline=False,
+            password=True,
+            size_hint=(None, None),
+            size=(dp(300), dp(45)),
+            pos_hint={"center_x": 0.5, "top": 0.46},
+        )
+        self.ai_page.add_widget(self.ai_gapgpt_key_input)
+
         self.ai_ask_button = Button(
             text="ASK AVA",
             font_name=FONT_NAME,
@@ -4792,70 +4807,59 @@ class AvaPetApp(App):
             self._send_ava_oled_message(offline)
             return
 
-        api_key = self.ai_key_input.text.strip()
-        if not api_key:
-            self.ai_status_label.text = "OFFLINE QUESTION NOT FOUND"
-            self.add_log("AVA AI: NO API KEY FOR ONLINE QUESTION")
-            return
+        openai_key = self.ai_key_input.text.strip()
+        gapgpt_key = self.ai_gapgpt_key_input.text.strip()
 
-        self.ai_status_label.text = "ASKING AI..."
+        self.ai_status_label.text = "CHECKING AI PROVIDERS..."
         self.ai_ask_button.disabled = True
+
         threading.Thread(
-            target=self._ask_openai_worker,
-            args=(question, api_key),
+            target=self._ask_online_worker,
+            args=(question, openai_key, gapgpt_key),
             daemon=True,
         ).start()
 
-    def _ask_openai_worker(self, question, api_key):
+    def _ask_online_worker(self, question, openai_key, gapgpt_key):
         try:
-            payload = {
-                "model": "gpt-6-luna",
-                "input": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": (
-                                    "You are AVA, a friendly small robot. "
-                                    "Answer in English, plain text only, maximum 120 characters. "
-                                    "Do not use markdown. User question: " + question
-                                ),
-                            }
-                        ],
-                    }
-                ],
-            }
-
-            request = urllib.request.Request(
-                "https://api.openai.com/v1/responses",
-                data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + api_key,
-                },
-                method="POST",
+            checks = check_available_providers(
+                openai_key=openai_key,
+                gapgpt_key=gapgpt_key,
             )
 
-            with urllib.request.urlopen(request, timeout=30) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            self._log_ai_provider_status(checks)
 
-            answer = str(data.get("output_text", "")).strip()
-            if not answer:
-                for item in data.get("output", []):
-                    for content in item.get("content", []):
-                        if content.get("type") == "output_text":
-                            answer = str(content.get("text", "")).strip()
-                            if answer:
-                                break
-                    if answer:
-                        break
+            selected = None
 
-            if not answer:
-                raise RuntimeError("AI returned an empty answer.")
+            for provider in checks:
+                if not provider["available"]:
+                    continue
+
+                if provider["kind"] == "openai" and openai_key:
+                    selected = provider
+                    break
+
+                if provider["kind"] == "gapgpt" and gapgpt_key:
+                    selected = provider
+                    break
+
+            if selected is None:
+                raise RuntimeError(
+                    "No usable AI provider is currently available."
+                )
+
+            answer = ask_provider(
+                selected,
+                question,
+                openai_key
+                if selected["kind"] == "openai"
+                else gapgpt_key,
+            )
 
             Clock.schedule_once(
-                lambda *_: self._finish_ai_answer(answer),
+                lambda *_: self._finish_ai_answer(
+                    answer,
+                    selected["name"],
+                ),
                 0,
             )
 
@@ -4866,9 +4870,18 @@ class AvaPetApp(App):
                 0,
             )
 
-    def _finish_ai_answer(self, answer):
-        self.ai_status_label.text = "AI ANSWER READY"
+    def _log_ai_provider_status(self, checks):
+        for provider in checks:
+            self.add_log(
+                f"AI PROVIDER CHECK | {provider['name']} | "
+                f"HTTP={provider['status']} | "
+                f"AVAILABLE={provider['available']}"
+            )
+
+        def _finish_ai_answer(self, answer, provider_name="AI"):
+        self.ai_status_label.text = f"{provider_name.upper()} ANSWER READY"
         self.ai_ask_button.disabled = False
+        self.add_log(f"AVA AI PROVIDER USED | {provider_name}")
         self._send_ava_oled_message(answer)
 
     def _finish_ai_error(self, error):
