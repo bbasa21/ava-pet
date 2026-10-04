@@ -904,11 +904,10 @@ class AndroidBLE:
                 question = text.split("|", 1)[1].strip()
                 if question:
                     self.log(f"[AI] AVA REQUESTED AI ANSWER | {question}")
-                    openai_key = self.ai_key_input.text.strip()
                     gapgpt_key = self.ai_gapgpt_key_input.text.strip()
                     threading.Thread(
                         target=self._ask_online_worker,
-                        args=(question, openai_key, gapgpt_key),
+                        args=(question, gapgpt_key),
                         daemon=True,
                     ).start()
                 return
@@ -4697,7 +4696,7 @@ class AvaPetApp(App):
         self.ai_page.add_widget(self.ai_question_input)
 
         self.ai_key_input = TextInput(
-            hint_text="OPENAI API KEY (OPTIONAL)",
+            hint_text="OPENAI API KEY (REMOVED)",
             font_name=FONT_NAME,
             font_size=dp(11),
             multiline=False,
@@ -4823,7 +4822,6 @@ class AvaPetApp(App):
             self._send_ava_oled_message(offline)
             return
 
-        openai_key = self.ai_key_input.text.strip()
         gapgpt_key = self.ai_gapgpt_key_input.text.strip()
 
         self.ai_status_label.text = "CHECKING AI PROVIDERS..."
@@ -4831,14 +4829,13 @@ class AvaPetApp(App):
 
         threading.Thread(
             target=self._ask_online_worker,
-            args=(question, openai_key, gapgpt_key),
+            args=(question, gapgpt_key),
             daemon=True,
         ).start()
 
-    def _ask_online_worker(self, question, openai_key, gapgpt_key):
+    def _ask_online_worker(self, question, gapgpt_key):
         try:
             checks = check_available_providers(
-                openai_key=openai_key,
                 gapgpt_key=gapgpt_key,
             )
 
@@ -4849,10 +4846,6 @@ class AvaPetApp(App):
             for provider in checks:
                 if not provider["available"]:
                     continue
-
-                if provider["kind"] == "openai" and openai_key:
-                    selected = provider
-                    break
 
                 if provider["kind"] == "gapgpt" and gapgpt_key:
                     selected = provider
@@ -4866,9 +4859,7 @@ class AvaPetApp(App):
             answer = ask_provider(
                 selected,
                 question,
-                openai_key
-                if selected["kind"] == "openai"
-                else gapgpt_key,
+                gapgpt_key,
             )
 
             Clock.schedule_once(
