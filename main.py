@@ -118,6 +118,7 @@ class AndroidBLE:
         self.data_characteristic = None
 
         self.event_descriptor = None
+        self.data_descriptor = None
 
         self.connected = False
         self.connecting = False
@@ -698,6 +699,7 @@ class AndroidBLE:
                 self.data_characteristic = None
 
                 self.event_descriptor = None
+                self.data_descriptor = None
 
                 self.command_queue.clear()
                 self.data_queue.clear()
@@ -1036,23 +1038,44 @@ class AndroidBLE:
 
             if status == GATT_SUCCESS:
 
-                self.notifications_enabled = True
-                self.ready = True
-
                 self.log(
                     f"CCCD WRITE OK | {uuid}"
                 )
 
-                self.log(
-                    "EVENT NOTIFICATIONS ENABLED."
-                )
+                if uuid.lower() == EVENT_UUID.lower():
+
+                    self.log(
+                        "EVENT NOTIFICATIONS ENABLED."
+                    )
+
+                    if not self._enable_data_notifications():
+
+                        self.notifications_enabled = False
+                        self.ready = False
+
+                    return
+
+                if uuid.lower() == DATA_UUID.lower():
+
+                    self.notifications_enabled = True
+                    self.ready = True
+
+                    self.log(
+                        "DATA NOTIFICATIONS ENABLED."
+                    )
+
+                    self.log(
+                        "AVA READY."
+                    )
+
+                    self._process_command_queue()
+                    self._process_data_queue()
+
+                    return
 
                 self.log(
-                    "AVA READY."
+                    f"UNKNOWN CCCD UUID: {uuid}"
                 )
-
-                self._process_command_queue()
-                self._process_data_queue()
 
             else:
 
@@ -1142,10 +1165,11 @@ class AndroidBLE:
         if (
             self.gatt is None
             or self.event_characteristic is None
+            or self.data_characteristic is None
         ):
 
             self.log(
-                "NOTIFY ERROR: GATT/EVENT UNAVAILABLE."
+                "NOTIFY ERROR: GATT/EVENT/DATA UNAVAILABLE."
             )
 
             return False
@@ -1158,8 +1182,97 @@ class AndroidBLE:
             ):
 
                 self.log(
-                    "NOTIFY ERROR: "
-                    "setCharacteristicNotification() FAILED."
+                    "NOTIFY ERROR: EVENT setCharacteristicNotification() FAILED."
+                )
+
+                return False
+
+            UUID = autoclass(
+                "java.util.UUID"
+            )
+
+            Descriptor = autoclass(
+                "android.bluetooth.BluetoothGattDescriptor"
+            )
+
+            event_descriptor = (
+                self.event_characteristic.getDescriptor(
+                    UUID.fromString(
+                        CCCD_UUID
+                    )
+                )
+            )
+
+            if event_descriptor is None:
+
+                self.log(
+                    "NOTIFY ERROR: EVENT CCCD NOT FOUND."
+                )
+
+                return False
+
+            self.event_descriptor = event_descriptor
+
+            event_descriptor.setValue(
+                Descriptor.ENABLE_NOTIFICATION_VALUE
+            )
+
+            self.descriptor_write_busy = True
+
+            if not self.gatt.writeDescriptor(
+                event_descriptor
+            ):
+
+                self.descriptor_write_busy = False
+
+                self.log(
+                    "NOTIFY ERROR: EVENT CCCD writeDescriptor() FAILED."
+                )
+
+                return False
+
+            self.log(
+                "EVENT CCCD WRITE REQUESTED."
+            )
+
+            return True
+
+        except Exception as exc:
+
+            self.descriptor_write_busy = False
+
+            self.log(
+                f"NOTIFICATION ERROR: {exc}"
+            )
+
+            return False
+
+    # --------------------------------------------------------
+    # ENABLE DATA NOTIFICATIONS
+    # --------------------------------------------------------
+
+    def _enable_data_notifications(self):
+
+        if (
+            self.gatt is None
+            or self.data_characteristic is None
+        ):
+
+            self.log(
+                "NOTIFY ERROR: GATT/DATA UNAVAILABLE."
+            )
+
+            return False
+
+        try:
+
+            if not self.gatt.setCharacteristicNotification(
+                self.data_characteristic,
+                True,
+            ):
+
+                self.log(
+                    "NOTIFY ERROR: DATA setCharacteristicNotification() FAILED."
                 )
 
                 return False
@@ -1173,7 +1286,7 @@ class AndroidBLE:
             )
 
             descriptor = (
-                self.event_characteristic.getDescriptor(
+                self.data_characteristic.getDescriptor(
                     UUID.fromString(
                         CCCD_UUID
                     )
@@ -1183,12 +1296,12 @@ class AndroidBLE:
             if descriptor is None:
 
                 self.log(
-                    "NOTIFY ERROR: CCCD NOT FOUND."
+                    "NOTIFY ERROR: DATA CCCD NOT FOUND."
                 )
 
                 return False
 
-            self.event_descriptor = descriptor
+            self.data_descriptor = descriptor
 
             descriptor.setValue(
                 Descriptor.ENABLE_NOTIFICATION_VALUE
@@ -1203,14 +1316,13 @@ class AndroidBLE:
                 self.descriptor_write_busy = False
 
                 self.log(
-                    "NOTIFY ERROR: "
-                    "writeDescriptor() FAILED."
+                    "NOTIFY ERROR: DATA CCCD writeDescriptor() FAILED."
                 )
 
                 return False
 
             self.log(
-                "CCCD WRITE REQUESTED."
+                "DATA CCCD WRITE REQUESTED."
             )
 
             return True
@@ -1220,7 +1332,7 @@ class AndroidBLE:
             self.descriptor_write_busy = False
 
             self.log(
-                f"NOTIFICATION ERROR: {exc}"
+                f"DATA NOTIFICATION ERROR: {exc}"
             )
 
             return False
@@ -1604,6 +1716,7 @@ class AndroidBLE:
         self.data_characteristic = None
 
         self.event_descriptor = None
+        self.data_descriptor = None
 
         self.command_queue.clear()
         self.data_queue.clear()
