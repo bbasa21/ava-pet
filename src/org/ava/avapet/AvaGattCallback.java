@@ -164,18 +164,11 @@ public final class AvaGattCallback extends BluetoothGattCallback {
         BluetoothGattCharacteristic characteristic = descriptor == null ? null : descriptor.getCharacteristic();
         UUID characteristicUuid = characteristic == null ? null : characteristic.getUuid();
 
-        // The Python side originally enabled only EVENT notifications. Keep
-        // that public API intact, but once EVENT notifications succeed,
-        // automatically enable DATA notifications as the second CCCD
-        // transaction. This is required because AVA game messages arrive on
-        // DATA, not EVENT.
-        if (status == BluetoothGatt.GATT_SUCCESS
-                && characteristicUuid != null
-                && characteristicUuid.equals(EVENT_UUID)) {
-            if (enableDataNotifications(gatt)) {
-                return;
-            }
-            push("DESCRIPTOR|" + EVENT_UUID + "|133");
+        // Python owns notification setup order: EVENT CCCD first, then
+        // DATA CCCD as a separate transaction. Do not start a second DATA
+        // descriptor write from this callback.
+        if (characteristicUuid != null && characteristicUuid.equals(EVENT_UUID)) {
+            push("DESCRIPTOR|" + EVENT_UUID + "|" + status);
             return;
         }
 
