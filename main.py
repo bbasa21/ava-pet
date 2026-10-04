@@ -1,5 +1,9 @@
 import base64
 import os
+import json
+import threading
+import urllib.request
+import urllib.error
 from datetime import datetime
 from collections import deque
 
@@ -1912,6 +1916,7 @@ class AvaPetApp(App):
         settings_items = [
             "AVA DISPLAY",
             "AVA NETWORK",
+            "AVA AI",
             "VOICE",
             "VOLUME",
             "VOICE SETTINGS",
@@ -1976,6 +1981,9 @@ class AvaPetApp(App):
             elif title == "AVA NETWORK":
                 # Defer navigation so the settings button always receives on_release.
                 button.bind(on_release=self._ava_network_button_released)
+            elif title == "AVA AI":
+                # Defer navigation so the settings button always receives on_release.
+                button.bind(on_release=self._ava_ai_button_released)
 
 
         # ----------------------------------------------------
@@ -2156,6 +2164,8 @@ class AvaPetApp(App):
         self.root_layout.add_widget(self.network_page)
         self.network_page.opacity = 0
         self.network_page.disabled = True
+
+        self._build_ava_ai_page()
 
         # ====================================================
         # MY GAMES PAGE
@@ -4549,6 +4559,8 @@ class AvaPetApp(App):
         self.settings_page.disabled = True
         self.network_page.opacity = 0
         self.network_page.disabled = True
+        self.ai_page.opacity = 0
+        self.ai_page.disabled = True
         self.display_page.opacity = 1
         self.display_page.disabled = False
 
@@ -4563,6 +4575,8 @@ class AvaPetApp(App):
         self.display_page.disabled = True
         self.network_page.opacity = 0
         self.network_page.disabled = True
+        self.ai_page.opacity = 0
+        self.ai_page.disabled = True
         self.settings_page.opacity = 1
         self.settings_page.disabled = False
 
@@ -4627,6 +4641,241 @@ class AvaPetApp(App):
                 f"contrast={sent_contrast} mode={sent_mode} apply={sent_apply}"
             )
 
+    # ========================================================
+    # AVA AI PAGE
+    # ========================================================
+
+    def _build_ava_ai_page(self):
+        self.ai_page = FloatLayout(size_hint=(1, 1))
+
+        self.ai_title = Label(
+            text="AVA AI",
+            font_name=FONT_NAME,
+            font_size=dp(25),
+            size_hint=(1, None),
+            height=dp(55),
+            pos_hint={"center_x": 0.5, "top": 0.90},
+        )
+        self.ai_page.add_widget(self.ai_title)
+
+        self.ai_status_label = Label(
+            text="OFFLINE Q&A READY",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            size_hint=(1, None),
+            height=dp(35),
+            pos_hint={"center_x": 0.5, "top": 0.78},
+        )
+        self.ai_page.add_widget(self.ai_status_label)
+
+        self.ai_question_input = TextInput(
+            hint_text="ASK AVA A QUESTION",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            multiline=False,
+            size_hint=(None, None),
+            size=(dp(300), dp(52)),
+            pos_hint={"center_x": 0.5, "top": 0.65},
+        )
+        self.ai_page.add_widget(self.ai_question_input)
+
+        self.ai_key_input = TextInput(
+            hint_text="OPENAI API KEY (OPTIONAL)",
+            font_name=FONT_NAME,
+            font_size=dp(11),
+            multiline=False,
+            password=True,
+            size_hint=(None, None),
+            size=(dp(300), dp(45)),
+            pos_hint={"center_x": 0.5, "top": 0.54},
+        )
+        self.ai_page.add_widget(self.ai_key_input)
+
+        self.ai_ask_button = Button(
+            text="ASK AVA",
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            size_hint=(None, None),
+            size=(dp(145), dp(48)),
+            pos_hint={"center_x": 0.5, "top": 0.40},
+            background_normal="",
+            background_down="",
+            background_color=(0.45, 0.12, 0.75, 0.9),
+        )
+        self.ai_page.add_widget(self.ai_ask_button)
+
+        self.ai_back_button = Button(
+            text="BACK",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            size_hint=(None, None),
+            size=(dp(110), dp(44)),
+            pos_hint={"center_x": 0.5, "top": 0.20},
+            background_normal="",
+            background_down="",
+            background_color=(0.18, 0.18, 0.22, 0.9),
+        )
+        self.ai_page.add_widget(self.ai_back_button)
+
+        self.ai_ask_button.bind(on_release=self.ask_ava_question)
+        self.ai_back_button.bind(on_release=self.back_to_settings)
+
+        self.root_layout.add_widget(self.ai_page)
+        self.ai_page.opacity = 0
+        self.ai_page.disabled = True
+
+    def _ava_ai_button_released(self, *_):
+        Clock.schedule_once(self.show_ava_ai, 0)
+
+    def show_ava_ai(self, *_):
+        self.connect_button.opacity = 0
+        self.connect_button.disabled = True
+
+        for page_name in (
+            "finding_page",
+            "home_page",
+            "games_page",
+            "math_page",
+            "logic_page",
+            "settings_page",
+            "display_page",
+            "network_page",
+        ):
+            page = getattr(self, page_name, None)
+            if page is not None:
+                page.opacity = 0
+                page.disabled = True
+
+        self.ai_page.opacity = 1
+        self.ai_page.disabled = False
+        self.root_layout.remove_widget(self.ai_page)
+        self.root_layout.add_widget(self.ai_page)
+        self.ai_status_label.text = "OFFLINE Q&A READY"
+        self.add_log("AVA AI PAGE OPENED")
+
+    @staticmethod
+    def _offline_ava_answer(question):
+        q = " ".join(str(question).strip().lower().split())
+        q = q.replace("?", "").replace("’", "'")
+
+        answers = {
+            "who is your developer": "MY DEVELOPER IS ALI. HE IS 15 YEARS OLD. HE BUILT ME.",
+            "who built you": "ALI BUILT ME. HE IS 15 YEARS OLD.",
+            "who made you": "ALI MADE ME. HE IS 15 YEARS OLD.",
+            "what is your name": "MY NAME IS AVA.",
+            "who are you": "I AM AVA, A SMALL ROBOT BUILT BY ALI.",
+            "how old is your developer": "MY DEVELOPER IS 15 YEARS OLD.",
+            "are you happy": "YES! I AM HAPPY!",
+            "what can you do": "I CAN CONNECT, SHOW WEATHER, AND ANSWER QUESTIONS.",
+            "what is your purpose": "I WAS BUILT TO BE A COMPANION AND TO HELP ALI.",
+            "where were you built": "I WAS BUILT BY ALI.",
+        }
+
+        return answers.get(q)
+
+    def _send_ava_oled_message(self, answer):
+        clean = " ".join(str(answer).replace("|", " ").split())
+        clean = clean[:300]
+        sent = self.ble.write_data("OLED_MESSAGE|" + clean)
+        self.add_log(f"AVA OLED ANSWER | sent={sent}")
+        return sent
+
+    def ask_ava_question(self, *_):
+        question = self.ai_question_input.text.strip()
+        if not question:
+            self.ai_status_label.text = "ENTER A QUESTION"
+            return
+
+        offline = self._offline_ava_answer(question)
+        if offline is not None:
+            self.ai_status_label.text = "OFFLINE ANSWER"
+            self._send_ava_oled_message(offline)
+            return
+
+        api_key = self.ai_key_input.text.strip()
+        if not api_key:
+            self.ai_status_label.text = "OFFLINE QUESTION NOT FOUND"
+            self.add_log("AVA AI: NO API KEY FOR ONLINE QUESTION")
+            return
+
+        self.ai_status_label.text = "ASKING AI..."
+        self.ai_ask_button.disabled = True
+        threading.Thread(
+            target=self._ask_openai_worker,
+            args=(question, api_key),
+            daemon=True,
+        ).start()
+
+    def _ask_openai_worker(self, question, api_key):
+        try:
+            payload = {
+                "model": "gpt-6-luna",
+                "input": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": (
+                                    "You are AVA, a friendly small robot. "
+                                    "Answer in English, plain text only, maximum 120 characters. "
+                                    "Do not use markdown. User question: " + question
+                                ),
+                            }
+                        ],
+                    }
+                ],
+            }
+
+            request = urllib.request.Request(
+                "https://api.openai.com/v1/responses",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + api_key,
+                },
+                method="POST",
+            )
+
+            with urllib.request.urlopen(request, timeout=30) as response:
+                data = json.loads(response.read().decode("utf-8"))
+
+            answer = str(data.get("output_text", "")).strip()
+            if not answer:
+                for item in data.get("output", []):
+                    for content in item.get("content", []):
+                        if content.get("type") == "output_text":
+                            answer = str(content.get("text", "")).strip()
+                            if answer:
+                                break
+                    if answer:
+                        break
+
+            if not answer:
+                raise RuntimeError("AI returned an empty answer.")
+
+            Clock.schedule_once(
+                lambda *_: self._finish_ai_answer(answer),
+                0,
+            )
+
+        except Exception as exc:
+            message = str(exc)
+            Clock.schedule_once(
+                lambda *_: self._finish_ai_error(message),
+                0,
+            )
+
+    def _finish_ai_answer(self, answer):
+        self.ai_status_label.text = "AI ANSWER READY"
+        self.ai_ask_button.disabled = False
+        self._send_ava_oled_message(answer)
+
+    def _finish_ai_error(self, error):
+        self.ai_status_label.text = "AI CONNECTION FAILED"
+        self.ai_ask_button.disabled = False
+        self.add_log(f"AVA AI ERROR | {error}")
+
     def _ava_network_button_released(self, *_):
         Clock.schedule_once(self.show_ava_network, 0)
 
@@ -4669,6 +4918,7 @@ class AvaPetApp(App):
             "logic_page",
             "settings_page",
             "display_page",
+            "ai_page",
         ):
             page = getattr(self, page_name, None)
             if page is not None:
@@ -4769,6 +5019,8 @@ class AvaPetApp(App):
         self._hide_display_page()
         self.network_page.opacity = 0
         self.network_page.disabled = True
+        self.ai_page.opacity = 0
+        self.ai_page.disabled = True
         self._send_display_data("SETTINGS_EXIT")
 
         try:
