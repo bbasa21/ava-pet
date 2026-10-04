@@ -4683,10 +4683,13 @@ class AvaPetApp(App):
         self.ai_page.add_widget(self.ai_status_label)
 
         self.ai_question_input = TextInput(
-            hint_text="ASK AVA A QUESTION",
-            font_name=FONT_NAME,
-            font_size=dp(13),
+            hint_text="ASK AVA A QUESTION / سوالت را بنویس",
+            # Orbitron does not contain Persian glyphs. Use Roboto here
+            # so Persian input is rendered correctly.
+            font_name="Roboto",
+            font_size=dp(16),
             multiline=False,
+            input_type="text",
             size_hint=(None, None),
             size=(dp(300), dp(52)),
             pos_hint={"center_x": 0.5, "top": 0.65},
