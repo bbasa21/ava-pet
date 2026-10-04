@@ -900,6 +900,19 @@ class AndroidBLE:
                 f"EVENT <- {uuid} | {text}"
             )
 
+            if uuid.lower() == DATA_UUID.lower() and text.startswith("AI_REQUEST|"):
+                question = text.split("|", 1)[1].strip()
+                if question:
+                    self.log(f"[AI] AVA REQUESTED AI ANSWER | {question}")
+                    openai_key = self.ai_key_input.text.strip()
+                    gapgpt_key = self.ai_gapgpt_key_input.text.strip()
+                    threading.Thread(
+                        target=self._ask_online_worker,
+                        args=(question, openai_key, gapgpt_key),
+                        daemon=True,
+                    ).start()
+                return
+
             if (
                 uuid.lower()
                 == EVENT_UUID.lower()
