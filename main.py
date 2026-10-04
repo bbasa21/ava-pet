@@ -4878,7 +4878,7 @@ class AvaPetApp(App):
                 f"AVAILABLE={provider['available']}"
             )
 
-        def _finish_ai_answer(self, answer, provider_name="AI"):
+    def _finish_ai_answer(self, answer, provider_name="AI"):
         self.ai_status_label.text = f"{provider_name.upper()} ANSWER READY"
         self.ai_ask_button.disabled = False
         self.add_log(f"AVA AI PROVIDER USED | {provider_name}")
