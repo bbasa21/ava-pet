@@ -3854,15 +3854,25 @@ class AvaPetApp(App):
 
                 if status == "CONNECTED":
                     ssid = parts[2].strip() if len(parts) >= 3 else ""
-                    self.network_status_label.text = "AVA ALREADY CONNECTED"
-                    self.network_ssid_label.text = (
-                        f"NETWORK   {ssid}" if ssid else "NETWORK   CONNECTED"
+                    self.network_status_label.text = (
+                        "AVA CONNECTED — ENTER NEW NETWORK"
                     )
-                    self.network_fields_visible(False)
-                    self.add_log(f"AVA NETWORK STATUS <- CONNECTED | SSID={ssid}")
+                    self.network_ssid_label.text = (
+                        f"CURRENT NETWORK   {ssid}"
+                        if ssid
+                        else "CURRENT NETWORK   CONNECTED"
+                    )
+                    # Keep the Wi-Fi form available so the user can switch
+                    # networks without first disconnecting AVA manually.
+                    self.network_connect_button.text = "CHANGE NETWORK"
+                    self.network_fields_visible(True)
+                    self.add_log(
+                        f"AVA NETWORK STATUS <- CONNECTED | SSID={ssid}"
+                    )
                 else:
                     self.network_status_label.text = "AVA NOT CONNECTED"
                     self.network_ssid_label.text = ""
+                    self.network_connect_button.text = "CONNECT"
                     self.network_fields_visible(True)
                     self.add_log("AVA NETWORK STATUS <- DISCONNECTED")
             return
