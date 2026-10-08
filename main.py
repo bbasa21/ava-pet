@@ -905,13 +905,7 @@ class AndroidBLE:
             if uuid.lower() == DATA_UUID.lower() and text.startswith("AI_REQUEST|"):
                 question = text.split("|", 1)[1].strip()
                 if question:
-                    self.log(f"[AI] AVA REQUESTED AI ANSWER | {question}")
-                    gapgpt_key = self.ai_gapgpt_key_input.text.strip()
-                    threading.Thread(
-                        target=self._ask_online_worker,
-                        args=(question, gapgpt_key),
-                        daemon=True,
-                    ).start()
+                    self.log(f"[AI] AVA AI REQUEST | {question}")
                 return
 
             if (
@@ -4809,7 +4803,7 @@ class AvaPetApp(App):
         self.ai_page.add_widget(self.ai_question_input)
 
         self.ai_key_input = TextInput(
-            hint_text="OPENAI API KEY (REMOVED)",
+            hint_text="OPENROUTER API KEY",
             font_name=FONT_NAME,
             font_size=dp(11),
             multiline=False,
@@ -4820,19 +4814,18 @@ class AvaPetApp(App):
         )
         self.ai_page.add_widget(self.ai_key_input)
 
-
-
-        self.ai_gapgpt_key_input = TextInput(
-            hint_text="GAPGPT API KEY (OPTIONAL)",
+        self.ai_save_key_button = Button(
+            text="SAVE KEY TO AVA",
             font_name=FONT_NAME,
-            font_size=dp(11),
-            multiline=False,
-            password=True,
+            font_size=dp(12),
             size_hint=(None, None),
-            size=(dp(300), dp(45)),
-            pos_hint={"center_x": 0.5, "top": 0.46},
+            size=(dp(170), dp(42)),
+            pos_hint={"center_x": 0.5, "top": 0.45},
+            background_normal="",
+            background_down="",
+            background_color=(0.25, 0.08, 0.42, 0.9),
         )
-        self.ai_page.add_widget(self.ai_gapgpt_key_input)
+        self.ai_page.add_widget(self.ai_save_key_button)
 
         self.ai_ask_button = Button(
             text="ASK AVA",
@@ -4840,7 +4833,7 @@ class AvaPetApp(App):
             font_size=dp(14),
             size_hint=(None, None),
             size=(dp(145), dp(48)),
-            pos_hint={"center_x": 0.5, "top": 0.40},
+            pos_hint={"center_x": 0.5, "top": 0.34},
             background_normal="",
             background_down="",
             background_color=(0.45, 0.12, 0.75, 0.9),
@@ -4853,13 +4846,14 @@ class AvaPetApp(App):
             font_size=dp(13),
             size_hint=(None, None),
             size=(dp(110), dp(44)),
-            pos_hint={"center_x": 0.5, "top": 0.20},
+            pos_hint={"center_x": 0.5, "top": 0.16},
             background_normal="",
             background_down="",
             background_color=(0.18, 0.18, 0.22, 0.9),
         )
         self.ai_page.add_widget(self.ai_back_button)
 
+        self.ai_save_key_button.bind(on_release=self.save_openrouter_key)
         self.ai_ask_button.bind(on_release=self.ask_ava_question)
         self.ai_back_button.bind(on_release=self.back_to_settings)
 
@@ -4923,28 +4917,54 @@ class AvaPetApp(App):
         self.add_log(f"AVA OLED ANSWER | sent={sent}")
         return sent
 
+    def save_openrouter_key(self, *_):
+        api_key = self.ai_key_input.text.strip()
+
+        if not api_key:
+            self.ai_status_label.text = "ENTER OPENROUTER KEY"
+            self.add_log("OPENROUTER KEY SAVE FAILED: EMPTY KEY")
+            return
+
+        if not api_key.startswith("sk-or-"):
+            self.ai_status_label.text = "INVALID OPENROUTER KEY"
+            self.add_log("OPENROUTER KEY SAVE FAILED: INVALID FORMAT")
+            return
+
+        if not self.ble.connected or not self.ble.ready:
+            self.ai_status_label.text = "AVA BLE NOT READY"
+            self.add_log("OPENROUTER KEY SAVE FAILED: BLE NOT READY")
+            return
+
+        sent = self.ble.write_command("apikey|" + api_key)
+
+        if sent:
+            self.ai_status_label.text = "KEY SAVED TO AVA"
+            self.add_log("OPENROUTER KEY SENT TO AVA NVS")
+            self.ai_key_input.text = ""
+        else:
+            self.ai_status_label.text = "KEY SAVE FAILED"
+            self.add_log("OPENROUTER KEY SEND FAILED")
+
     def ask_ava_question(self, *_):
         question = self.ai_question_input.text.strip()
         if not question:
             self.ai_status_label.text = "ENTER A QUESTION"
             return
 
-        offline = self._offline_ava_answer(question)
-        if offline is not None:
-            self.ai_status_label.text = "OFFLINE ANSWER"
-            self._send_ava_oled_message(offline)
-            return
-
-        gapgpt_key = self.ai_gapgpt_key_input.text.strip()
-
-        self.ai_status_label.text = "CHECKING AI PROVIDERS..."
+        self.ai_status_label.text = "SENDING TO AVA..."
         self.ai_ask_button.disabled = True
 
-        threading.Thread(
-            target=self._ask_online_worker,
-            args=(question, gapgpt_key),
-            daemon=True,
-        ).start()
+        sent = self.ble.write_command("ask|" + question)
+
+        if sent:
+            self.ai_status_label.text = "AVA IS THINKING..."
+            self.add_log(f"AI QUESTION -> AVA | sent={sent}")
+            self.ai_question_input.text = ""
+        else:
+            self.ai_status_label.text = "AI SEND FAILED"
+            self.add_log("AI QUESTION SEND FAILED")
+
+        self.ai_ask_button.disabled = False
 
     def _ask_online_worker(self, question, gapgpt_key):
         try:
