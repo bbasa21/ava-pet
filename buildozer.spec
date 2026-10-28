@@ -8,8 +8,8 @@ package.domain = org.ava
 # IMPORTANT:
 # Keep the version number higher than every previously installed release.
 # Current installed release: 0.3
-# Next release should be: 0.4
-version = 0.3
+# Next release: 0.4 (GapGPT API key support)
+version = 0.4
 
 # Project source
 source.dir = .
