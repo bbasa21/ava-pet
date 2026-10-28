@@ -4949,7 +4949,7 @@ class AvaPetApp(App):
 
         if sent:
             self.ai_status_label.text = "GAPGPT KEY SENT TO AVA"
-            self.add_log("GAPGPT KEY SENT TO AVA NVS")
+            self.add_log("GAPGPT KEY COMMAND SENT; WAITING FOR AVA CONFIRMATION")
             self.ai_key_input.text = ""
         else:
             self.ai_status_label.text = "KEY SAVE FAILED"
