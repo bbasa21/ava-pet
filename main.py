@@ -4813,7 +4813,7 @@ class AvaPetApp(App):
         self.ai_page.add_widget(self.ai_question_input)
 
         self.ai_key_input = TextInput(
-            hint_text="OPENROUTER API KEY",
+            hint_text="GAPGPT API KEY",
             font_name=FONT_NAME,
             font_size=dp(11),
             multiline=False,
@@ -4863,7 +4863,7 @@ class AvaPetApp(App):
         )
         self.ai_page.add_widget(self.ai_back_button)
 
-        self.ai_save_key_button.bind(on_release=self.save_openrouter_key)
+        self.ai_save_key_button.bind(on_release=self.save_gapgpt_key)
         self.ai_ask_button.bind(on_release=self.ask_ava_question)
         self.ai_back_button.bind(on_release=self.back_to_settings)
 
@@ -4927,33 +4927,33 @@ class AvaPetApp(App):
         self.add_log(f"AVA OLED ANSWER | sent={sent}")
         return sent
 
-    def save_openrouter_key(self, *_):
+    def save_gapgpt_key(self, *_):
         api_key = self.ai_key_input.text.strip()
 
         if not api_key:
-            self.ai_status_label.text = "ENTER OPENROUTER KEY"
-            self.add_log("OPENROUTER KEY SAVE FAILED: EMPTY KEY")
+            self.ai_status_label.text = "ENTER GAPGPT KEY"
+            self.add_log("GAPGPT KEY SAVE FAILED: EMPTY KEY")
             return
 
-        if not api_key.startswith("sk-or-"):
-            self.ai_status_label.text = "INVALID OPENROUTER KEY"
-            self.add_log("OPENROUTER KEY SAVE FAILED: INVALID FORMAT")
+        if "|" in api_key or "\n" in api_key or "\r" in api_key:
+            self.ai_status_label.text = "INVALID API KEY"
+            self.add_log("GAPGPT KEY SAVE FAILED: INVALID CHARACTERS")
             return
 
         if not self.ble.connected or not self.ble.ready:
             self.ai_status_label.text = "AVA BLE NOT READY"
-            self.add_log("OPENROUTER KEY SAVE FAILED: BLE NOT READY")
+            self.add_log("GAPGPT KEY SAVE FAILED: BLE NOT READY")
             return
 
         sent = self.ble.write_command("apikey|" + api_key)
 
         if sent:
-            self.ai_status_label.text = "KEY SAVED TO AVA"
-            self.add_log("OPENROUTER KEY SENT TO AVA NVS")
+            self.ai_status_label.text = "GAPGPT KEY SENT TO AVA"
+            self.add_log("GAPGPT KEY SENT TO AVA NVS")
             self.ai_key_input.text = ""
         else:
             self.ai_status_label.text = "KEY SAVE FAILED"
-            self.add_log("OPENROUTER KEY SEND FAILED")
+            self.add_log("GAPGPT KEY SEND FAILED")
 
     def ask_ava_question(self, *_):
         question = self.ai_question_input.text.strip()
