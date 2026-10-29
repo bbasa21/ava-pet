@@ -7,9 +7,10 @@ package.domain = org.ava
 
 # IMPORTANT:
 # Keep the version number higher than every previously installed release.
-# Current installed release: 0.3
-# Next release: 0.4 (GapGPT API key support)
-version = 0.4
+# Current installed release: 0.4 (versionCode 10294)
+# OTA release: 0.5 (versionCode 10295)
+version = 0.5
+android.numeric_version = 10295
 
 # Project source
 source.dir = .
@@ -41,7 +42,8 @@ android.archs = arm64-v8a
 
 # BLE + location permissions.
 # Runtime permission handling is performed by main.py.
-android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
+android.permissions = INTERNET,BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT,REQUEST_INSTALL_PACKAGES
+android.add_manifest_xml = <receiver android:name="org.ava.avapet.AvaInstallStatusReceiver" android:exported="false" />
 
 # APK is intentionally kept as the release artifact for direct installation/update.
 android.release_artifact = apk

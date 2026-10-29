@@ -25,6 +25,7 @@ from jnius import autoclass, PythonJavaClass, java_method
 from ava_games import AVAILABLE_GAMES, game_load_command
 from snake_ladder import build_snake_ladder_page, SnakeLadderGame
 from ava_tictactoe import install_tictactoe
+from ava_ota import AvaOTA
 from ava_ai_providers import check_available_providers, ask_provider
 
 
@@ -1983,9 +1984,42 @@ class AvaPetApp(App):
         self.home_page.add_widget(
             self.home_settings_button
         )
+
         self.home_settings_button.bind(
             on_release=self.show_settings
         )
+
+        # ----------------------------------------------------
+        # CHECK FOR APP UPDATES
+        # ----------------------------------------------------
+
+        self.home_update_button = Button(
+            text="CHECK FOR UPDATES",
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            size_hint=(None, None),
+            size=(dp(210), dp(52)),
+            pos_hint={"center_x": 0.5, "center_y": 0.24},
+            background_normal="",
+            background_down="",
+            background_color=(0.30, 0.10, 0.52, 0.95),
+            color=(1, 1, 1, 1),
+        )
+        self.home_page.add_widget(self.home_update_button)
+
+        self.home_update_status = Label(
+            text="OTA READY",
+            font_name=FONT_NAME,
+            font_size=dp(10),
+            color=(0.82, 0.78, 1, 1),
+            size_hint=(1, None),
+            height=dp(28),
+            pos_hint={"center_x": 0.5, "center_y": 0.12},
+        )
+        self.home_page.add_widget(self.home_update_status)
+
+        self.ota = AvaOTA(self.add_log, self._ota_status_changed)
+        self.home_update_button.bind(on_release=self.ota.check_for_updates)
 
         # ----------------------------------------------------
         # ADD HOME PAGE
@@ -5155,6 +5189,10 @@ class AvaPetApp(App):
         self.root_layout.add_widget(self.settings_page)
 
         self._send_display_data("SETTINGS_ENTER")
+
+    def _ota_status_changed(self, message):
+        self.home_update_status.text = str(message)[:90]
+        self.home_update_button.disabled = "CHECKING" in str(message) or "DOWNLOADING" in str(message)
 
     # ====================================================
     # AVA HOME
