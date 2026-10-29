@@ -141,7 +141,7 @@ jobs:
           }
           with open("ota/update.json", "w", encoding="utf-8") as output:
               json.dump(metadata, output, indent=2)
-              output.write("\\n")
+              output.write("\n")
           print(json.dumps(metadata, indent=2))
           PY
 
