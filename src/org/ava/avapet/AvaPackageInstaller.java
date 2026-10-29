@@ -59,10 +59,15 @@ public final class AvaPackageInstaller {
 
             Intent statusIntent = new Intent(activity, AvaInstallStatusReceiver.class);
             statusIntent.setAction("org.ava.avapet.INSTALL_STATUS");
+
+            // PackageInstaller must be able to attach its status extras to this PendingIntent.
+            // On Android 12+ this requires FLAG_MUTABLE. The receiver is explicit, so the
+            // mutable PendingIntent cannot be redirected to another component.
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (Build.VERSION.SDK_INT >= 23) {
-                flags |= PendingIntent.FLAG_IMMUTABLE;
+            if (Build.VERSION.SDK_INT >= 31) {
+                flags |= PendingIntent.FLAG_MUTABLE;
             }
+
             PendingIntent status = PendingIntent.getBroadcast(
                 activity, sessionId, statusIntent, flags
             );
