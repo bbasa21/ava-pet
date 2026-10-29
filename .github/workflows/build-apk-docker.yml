@@ -107,6 +107,57 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Prepare OTA metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
+          mkdir -p ota
+          cp "$APK" bin/AVA-PET-release.apk
+          python3 - "$APK" buildozer.spec <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import sys
+
+          apk_path, spec_path = sys.argv[1:3]
+          spec = open(spec_path, encoding="utf-8").read()
+          version_match = re.search(r"^version\s*=\s*([^\s#]+)", spec, re.M)
+          code_match = re.search(r"^android\.numeric_version\s*=\s*(\d+)", spec, re.M)
+          if not version_match or not code_match:
+              raise SystemExit("Could not read version/versionCode from buildozer.spec")
+          digest = hashlib.sha256()
+          with open(apk_path, "rb") as apk:
+              for chunk in iter(lambda: apk.read(1024 * 1024), b""):
+                  digest.update(chunk)
+          repository = os.environ["GITHUB_REPOSITORY"]
+          metadata = {
+              "version_name": version_match.group(1),
+              "version_code": int(code_match.group(1)),
+              "apk_url": f"https://github.com/{repository}/releases/download/ota-latest/AVA-PET-release.apk",
+              "sha256": digest.hexdigest(),
+          }
+          with open("ota/update.json", "w", encoding="utf-8") as output:
+              json.dump(metadata, output, indent=2)
+              output.write("\\n")
+          print(json.dumps(metadata, indent=2))
+          PY
+
+      - name: Publish OTA release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ota-latest
+          name: AVA PET OTA Channel
+          body: "Latest signed AVA PET Android update. Install through the app's Check for Updates button."
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          overwrite_files: true
+          files: |
+            bin/AVA-PET-release.apk
+            ota/update.json
+
       - name: Upload Buildozer environment on failure
         if: failure()
         uses: actions/upload-artifact@v4
