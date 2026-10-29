@@ -146,6 +146,7 @@ jobs:
           PY
 
       - name: Publish OTA release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ota-latest
