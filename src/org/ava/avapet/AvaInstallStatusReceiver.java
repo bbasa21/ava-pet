@@ -14,7 +14,7 @@ public final class AvaInstallStatusReceiver extends BroadcastReceiver {
         );
 
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
-            Intent confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+            Intent confirmation = (Intent) intent.getParcelableExtra(Intent.EXTRA_INTENT);
             if (confirmation != null) {
                 confirmation.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(confirmation);
