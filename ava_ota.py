@@ -1,6 +1,8 @@
 import hashlib
 import json
 import os
+import socket
+import ssl
 import threading
 import urllib.request
 from urllib.error import HTTPError, URLError
@@ -29,6 +31,39 @@ class AvaOTA:
 
     def _log(self, message):
         Clock.schedule_once(lambda *_: self.logger(message), 0)
+
+    @staticmethod
+    def _friendly_network_error(exc):
+        reason = getattr(exc, "reason", exc)
+        detail = str(reason).lower()
+
+        if isinstance(reason, ssl.SSLCertVerificationError) or "certificate_verify_failed" in detail:
+            return "NETWORK ERROR: SSL CERTIFICATE"
+        if isinstance(reason, ssl.SSLError) or "ssl" in detail or "tls" in detail:
+            return "NETWORK ERROR: SSL/TLS"
+        if isinstance(reason, socket.gaierror) or any(
+            phrase in detail
+            for phrase in (
+                "name or service not known",
+                "temporary failure in name resolution",
+                "failed to resolve",
+                "getaddrinfo failed",
+            )
+        ):
+            return "NETWORK ERROR: DNS LOOKUP"
+        if isinstance(reason, (TimeoutError, socket.timeout)) or "timed out" in detail:
+            return "NETWORK ERROR: TIMEOUT"
+        if isinstance(reason, ConnectionRefusedError) or "connection refused" in detail:
+            return "NETWORK ERROR: CONNECTION REFUSED"
+        if "network is unreachable" in detail or "no route to host" in detail:
+            return "NETWORK ERROR: NO ROUTE"
+        if "connection reset" in detail:
+            return "NETWORK ERROR: CONNECTION RESET"
+
+        short_detail = str(reason).replace("\\n", " ").strip()
+        if not short_detail:
+            short_detail = type(reason).__name__
+        return "NETWORK ERROR: " + short_detail[:55]
 
     def check_for_updates(self, *_):
         if self.busy:
@@ -64,7 +99,6 @@ class AvaOTA:
 
             Activity = autoclass("org.kivy.android.PythonActivity")
             activity = Activity.mActivity
-            PackageManager = autoclass("android.content.pm.PackageManager")
             package_info = activity.getPackageManager().getPackageInfo(
                 activity.getPackageName(), 0
             )
@@ -120,13 +154,17 @@ class AvaOTA:
                 self._log("OTA INSTALL WAITING FOR ANDROID INSTALL PERMISSION")
 
         except HTTPError as exc:
-            self._status(f"UPDATE CHECK FAILED: HTTP {exc.code}")
-            self._log(f"OTA ERROR | HTTP {exc.code}")
+            self._status(f"UPDATE FAILED: HTTP {exc.code}")
+            self._log(f"OTA ERROR | HTTP {exc.code} | reason={exc.reason}")
         except URLError as exc:
-            self._status("UPDATE CHECK FAILED: CHECK INTERNET")
-            self._log(f"OTA ERROR | network={exc}")
+            friendly_error = self._friendly_network_error(exc)
+            self._status(friendly_error)
+            self._log(
+                f"OTA ERROR | network={exc!r} | "
+                f"reason_type={type(getattr(exc, 'reason', exc)).__name__}"
+            )
         except Exception as exc:
             self._status("UPDATE FAILED — EXISTING APP WAS NOT REMOVED")
-            self._log(f"OTA ERROR | {exc}")
+            self._log(f"OTA ERROR | {type(exc).__name__}: {exc}")
         finally:
             self.busy = False
