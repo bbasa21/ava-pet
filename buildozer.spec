@@ -8,9 +8,9 @@ package.domain = org.ava
 # IMPORTANT:
 # Keep the version number higher than every previously installed release.
 # Current installed release: 0.4 (versionCode 10294)
-# OTA release: 0.5 (versionCode 10295)
-version = 0.5
-android.numeric_version = 10295
+# OTA release: 0.5.1 (versionCode 10296)
+version = 0.5.1
+android.numeric_version = 10296
 
 # Project source
 source.dir = .
@@ -22,7 +22,7 @@ source.exclude_dirs = .git,.github,.buildozer,.kivy,bin,__pycache__
 android.add_src = src
 
 # Python runtime
-requirements = python3==3.11.5,kivy==2.3.1,pyjnius==1.6.1,filetype==1.2.0
+requirements = python3==3.11.5,kivy==2.3.1,pyjnius==1.6.1,filetype==1.2.0,certifi
 
 # AVA PET is a landscape application.
 orientation = landscape

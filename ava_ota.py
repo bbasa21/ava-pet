@@ -3,6 +3,7 @@ import json
 import os
 import socket
 import ssl
+import certifi
 import threading
 import urllib.request
 from urllib.error import HTTPError, URLError
@@ -16,6 +17,13 @@ MANIFEST_URL = (
     "ota-latest/update.json"
 )
 MAX_APK_BYTES = 150 * 1024 * 1024
+
+
+def _urlopen(request, timeout):
+    # Android's embedded Python may not automatically use Android's system CA store.
+    # certifi ships a maintained CA bundle inside the APK; keep TLS verification on.
+    context = ssl.create_default_context(cafile=certifi.where())
+    return urllib.request.urlopen(request, timeout=timeout, context=context)
 
 
 class AvaOTA:
@@ -79,7 +87,7 @@ class AvaOTA:
                 MANIFEST_URL,
                 headers={"User-Agent": "AVA-PET-Android-Updater"},
             )
-            with urllib.request.urlopen(request, timeout=25) as response:
+            with _urlopen(request, timeout=25) as response:
                 raw = response.read(128 * 1024 + 1)
             if len(raw) > 128 * 1024:
                 raise RuntimeError("Update manifest is unexpectedly large.")
@@ -125,7 +133,7 @@ class AvaOTA:
             )
             digest = hashlib.sha256()
             total = 0
-            with urllib.request.urlopen(request, timeout=60) as response:
+            with _urlopen(request, timeout=60) as response:
                 with open(apk_path, "wb") as target:
                     while True:
                         chunk = response.read(1024 * 1024)
